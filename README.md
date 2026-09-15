@@ -97,6 +97,54 @@ Este test modifica temporalmente un dato real en ClickUp. Por ahora se corre
 solo local (no está en CI); si más adelante se agrega a CI, el token debe
 viajar como secret, nunca como variable versionada.
 
+## Automatizar los tests con GitHub Actions (CI)
+
+Esto hace que los tests se corran solos, sin que nadie tenga que abrir su
+computadora y tipear comandos. Los archivos que lo controlan ya están en
+`.github/workflows/`:
+
+- **`e2e-mock.yml`** → corre automáticamente en cada `push` o Pull Request a
+  `main`. Usa datos simulados, no toca ClickUp. No requiere ninguna
+  configuración adicional.
+- **`qa-live.yml`** → **no** se corre solo. Aparece como un botón manual en
+  GitHub ("Run workflow"), porque este test modifica temporalmente un dato
+  real en ClickUp (aunque lo restaura siempre al final).
+
+### Puesta en marcha (una sola vez)
+
+1. **Subir este proyecto a GitHub** (si todavía no está ahí):
+   ```bash
+   cd portfolio-cx-app
+   git init
+   git add .
+   git commit -m "Proyecto + QA automatizado"
+   git branch -M main
+   git remote add origin https://github.com/TU-USUARIO/TU-REPO.git
+   git push -u origin main
+   ```
+   (`.env` no se sube nunca — está en `.gitignore`.)
+
+2. **Cargar el token como "Secret"** (así el workflow `e2e-live` puede usarlo
+   sin que quede escrito en ningún archivo):
+   - En GitHub, entrá al repo → pestaña **Settings** → en el menú de la
+     izquierda, **Secrets and variables** → **Actions**.
+   - Botón **New repository secret**.
+   - Name: `CLICKUP_API_TOKEN`
+   - Value: tu token real de ClickUp.
+   - **Add secret**.
+
+3. **Ver los workflows corriendo**: pestaña **Actions** del repo en GitHub.
+   - `QA (tests con datos simulados)` va a aparecer solo, cada vez que
+     hagas push a `main` o abras un Pull Request.
+   - `QA live (round-trip de Prioridad con ClickUp real)` tiene un botón
+     **Run workflow** (arriba a la derecha, dentro de esa pestaña) — lo
+     apretás cuando quieras correrlo a propósito.
+
+4. **Si algo falla**: entrá al workflow que falló, en la lista de "Artifacts"
+   (al final de la página de esa corrida) vas a encontrar
+   `playwright-report` (o `playwright-live-report`), que se puede descargar
+   y abrir (`index.html`) para ver exactamente qué falló, con screenshot.
+
 ## Notas
 
 - No hay ningún token de ClickUp en el código. Toda la comunicación pasa

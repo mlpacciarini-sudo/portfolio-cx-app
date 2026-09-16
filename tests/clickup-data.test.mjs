@@ -139,11 +139,48 @@ function isValidTimestampDate(value) {
   if (!Number.isFinite(n)) return false;
 
   const d = new Date(n);
-
   return !Number.isNaN(d.getTime());
 }
 
-async function getProjects() {
+function round1(n) {
+  return Math.round(n * 10) / 10;
+}
+
+function promedio(values) {
+  const nums = values.filter(
+    (v) => typeof v === "number" && Number.isFinite(v)
+  );
+
+  if (nums.length === 0) return null;
+
+  return round1(nums.reduce((sum, v) => sum + v, 0) / nums.length);
+}
+
+function calcularAvanceEntregable(entregable, allTasks) {
+  const actividades = allTasks.filter((t) => t.parent === entregable.id);
+
+  const avancesActividades = actividades.map((a) =>
+    cfNumber(a, "% Avance")
+  );
+
+  const promedioActividades = promedio(avancesActividades);
+
+  return promedioActividades ?? cfNumber(entregable, "% Avance");
+}
+
+function calcularAvanceProyecto(proyecto, allTasks) {
+  const entregables = allTasks.filter((t) => t.parent === proyecto.id);
+
+  const avancesEntregables = entregables.map((e) =>
+    calcularAvanceEntregable(e, allTasks)
+  );
+
+  const promedioEntregables = promedio(avancesEntregables);
+
+  return promedioEntregables ?? cfNumber(proyecto, "% Avance");
+}
+
+async function getData() {
   const response = await fetch(API_URL, {
     method: "GET",
     headers: { Accept: "application/json" },
@@ -157,19 +194,28 @@ async function getProjects() {
 
   const data = await response.json();
 
-  assert.ok(Array.isArray(data.tasks), "La respuesta no contiene data.tasks[]");
+  assert.ok(
+    Array.isArray(data.tasks),
+    "La respuesta no contiene data.tasks[]"
+  );
 
-  return data.tasks.filter((task) => !task.parent);
+  return {
+    tasks: data.tasks,
+    projects: data.tasks.filter((task) => !task.parent),
+  };
 }
 
+let tasks;
 let projects;
 
 test.before(async () => {
-  projects = await getProjects();
+  const data = await getData();
+  tasks = data.tasks;
+  projects = data.projects;
 });
 
-test("1. El endpoint responde correctamente", async () => {
-  assert.ok(Array.isArray(projects));
+test("1. El endpoint responde correctamente", () => {
+  assert.ok(Array.isArray(tasks));
 });
 
 test("2. Llegan proyectos desde ClickUp", () => {
@@ -179,19 +225,17 @@ test("2. Llegan proyectos desde ClickUp", () => {
   );
 });
 
-test("3. Cada proyecto tiene nombre, estado, focal y % avance", () => {
+test("3. Cada proyecto tiene nombre, estado y focal", () => {
   const errors = [];
 
   for (const task of projects) {
     const nombre = task.name?.trim();
     const estado = normalizeEstado(task.status?.status);
     const focal = cfUsers(task, "Focal");
-    const avance = cfNumber(task, "% Avance");
 
     if (!nombre) errors.push(`[${task.id}] falta nombre`);
     if (!estado) errors.push(`[${nombre || task.id}] falta estado`);
     if (!focal) errors.push(`[${nombre || task.id}] falta Focal`);
-    if (avance === null) errors.push(`[${nombre || task.id}] falta % Avance`);
   }
 
   assert.deepEqual(
@@ -201,25 +245,72 @@ test("3. Cada proyecto tiene nombre, estado, focal y % avance", () => {
   );
 });
 
-test("4. El % de avance está entre 0 y 100", () => {
-  const errors = [];
+test(
+  "4. Todos los proyectos actuales y futuros tienen avance calculable entre 0 y 100",
+  () => {
+    const errors = [];
 
-  for (const task of projects) {
-    const avance = cfNumber(task, "% Avance");
+    for (const project of projects) {
+      const avance = calcularAvanceProyecto(project, tasks);
 
-    if (avance !== null && (avance < 0 || avance > 100)) {
-      errors.push(`${task.name}: ${avance}%`);
+      if (avance === null) {
+        errors.push(`${project.name}: no se pudo calcular % Avance`);
+        continue;
+      }
+
+      if (avance < 0 || avance > 100) {
+        errors.push(
+          `${project.name}: avance calculado fuera de rango (${avance}%)`
+        );
+      }
     }
+
+    assert.deepEqual(
+      errors,
+      [],
+      `Hay problemas con el avance calculado:\n${errors.join("\n")}`
+    );
   }
+);
 
-  assert.deepEqual(
-    errors,
-    [],
-    `Hay porcentajes de avance fuera de rango:\n${errors.join("\n")}`
-  );
-});
+test(
+  "5. Las actividades usadas para calcular avance tienen % Avance válido",
+  () => {
+    const errors = [];
 
-test("5. Estado, Situación y Prioridad usan solo valores válidos", () => {
+    for (const project of projects) {
+      const entregables = tasks.filter((t) => t.parent === project.id);
+
+      for (const entregable of entregables) {
+        const actividades = tasks.filter(
+          (t) => t.parent === entregable.id
+        );
+
+        for (const actividad of actividades) {
+          const avance = cfNumber(actividad, "% Avance");
+
+          if (avance === null) {
+            errors.push(
+              `${project.name} > ${entregable.name} > ${actividad.name}: falta % Avance`
+            );
+          } else if (avance < 0 || avance > 100) {
+            errors.push(
+              `${project.name} > ${entregable.name} > ${actividad.name}: ${avance}% fuera de rango`
+            );
+          }
+        }
+      }
+    }
+
+    assert.deepEqual(
+      errors,
+      [],
+      `Hay actividades con % Avance inválido o faltante:\n${errors.join("\n")}`
+    );
+  }
+);
+
+test("6. Estado, Situación y Prioridad usan solo valores válidos", () => {
   const errors = [];
 
   for (const task of projects) {
@@ -251,7 +342,7 @@ test("5. Estado, Situación y Prioridad usan solo valores válidos", () => {
   );
 });
 
-test("6. Si existe Nueva fecha objetivo, contiene una fecha válida", () => {
+test("7. Si existe Nueva fecha objetivo, contiene una fecha válida", () => {
   const errors = [];
 
   for (const task of projects) {
@@ -269,7 +360,7 @@ test("6. Si existe Nueva fecha objetivo, contiene una fecha válida", () => {
   );
 });
 
-test("7. No hay proyectos duplicados por ID ni por nombre", () => {
+test("8. No hay proyectos duplicados por ID ni por nombre", () => {
   const ids = new Set();
   const names = new Set();
   const duplicateIds = [];
@@ -279,6 +370,7 @@ test("7. No hay proyectos duplicados por ID ni por nombre", () => {
     if (ids.has(task.id)) {
       duplicateIds.push(task.id);
     }
+
     ids.add(task.id);
 
     const normalizedName = stripAccents(task.name || "")
@@ -289,6 +381,7 @@ test("7. No hay proyectos duplicados por ID ni por nombre", () => {
     if (names.has(normalizedName)) {
       duplicateNames.push(task.name);
     }
+
     names.add(normalizedName);
   }
 

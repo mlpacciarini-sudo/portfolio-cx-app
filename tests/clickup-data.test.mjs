@@ -11,6 +11,7 @@ const VALID_ESTADOS = new Set([
   "EN EJECUCIÓN",
   "EN VALIDACIÓN",
   "EN ANÁLISIS",
+  "EN PAUSA",
   "FINALIZADO",
 ]);
 
@@ -38,6 +39,7 @@ function normalizeEstado(rawStatus) {
   if (s.includes("en ejecucion")) return "EN EJECUCIÓN";
   if (s.includes("en validacion")) return "EN VALIDACIÓN";
   if (s.includes("en analisis")) return "EN ANÁLISIS";
+  if (s.includes("on hold") || s.includes("en pausa")) return "EN PAUSA";
   if (s.includes("finalizado") || s.includes("done") || s.includes("closed")) {
     return "FINALIZADO";
   }

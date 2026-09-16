@@ -60,7 +60,57 @@ const RESPONSIVE_CSS = `
     max-width: 100%;
   }
 
+  .a3-shell button {
+    min-height: 40px;
+    transition: box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+  }
+
+  .a3-shell button:hover {
+    box-shadow: 0 3px 10px rgba(0, 22, 69, 0.10);
+  }
+
+  .a3-shell button:active {
+    transform: translateY(1px);
+  }
+
+  .a3-shell button:focus-visible {
+    outline: 3px solid rgba(0, 120, 255, 0.32);
+    outline-offset: 2px;
+  }
+
+  .kpi-card {
+    min-height: 74px !important;
+    padding: 13px 16px !important;
+    border-radius: 10px !important;
+  }
+
+  .kpi-number {
+    font-size: 27px !important;
+    margin-bottom: 5px !important;
+  }
+
+  .kpi-label {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+
+  .kpi-icon {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 15px !important;
+  }
+
   @media (max-width: 1399px) {
+    .kpi-grid {
+      gap: 12px !important;
+      margin-bottom: 16px !important;
+    }
+
+    .kpi-card {
+      min-height: 70px !important;
+      padding: 12px 14px !important;
+    }
+
     .portfolio-main,
     .project-main {
       padding-left: 20px !important;
@@ -127,6 +177,17 @@ const RESPONSIVE_CSS = `
   }
 
   @media (max-width: 767px) {
+    .a3-shell button {
+      min-height: 44px;
+    }
+
+    .mobile-clamp {
+      display: -webkit-box !important;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden !important;
+    }
+
     .a3-header,
     .project-header {
       padding: 16px 18px !important;
@@ -167,8 +228,13 @@ const RESPONSIVE_CSS = `
 
     .kpi-grid {
       grid-template-columns: 1fr !important;
-      gap: 10px !important;
-      margin-bottom: 16px !important;
+      gap: 8px !important;
+      margin-bottom: 14px !important;
+    }
+
+    .kpi-card {
+      min-height: 66px !important;
+      padding: 11px 13px !important;
     }
 
     .portfolio-cards-responsive {
@@ -555,13 +621,14 @@ function KpiCard({ value, label, tone = "blue", icon }) {
 
   return (
     <div
+      className="kpi-card"
       style={{
         background: WHITE,
         border: `1px solid ${BORDER}`,
-        borderRadius: 12,
-        padding: "18px 20px",
-        boxShadow: "0 6px 18px rgba(0,0,0,0.04)",
-        minHeight: 92,
+        borderRadius: 10,
+        padding: "13px 16px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.035)",
+        minHeight: 74,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -569,30 +636,34 @@ function KpiCard({ value, label, tone = "blue", icon }) {
     >
       <div>
         <div
+          className="kpi-number"
           style={{
-            fontSize: 31,
+            fontSize: 27,
             lineHeight: 1,
             fontWeight: 700,
             color: A3_NAVY,
-            marginBottom: 8,
+            marginBottom: 5,
           }}
         >
           {value}
         </div>
-        <div style={{ fontSize: 14, color: A3_NAVY }}>{label}</div>
+        <div className="kpi-label" style={{ fontSize: 12, lineHeight: 1.2, color: A3_NAVY }}>{label}</div>
       </div>
 
       <div
+        className="kpi-icon"
+        aria-hidden="true"
         style={{
-          width: 42,
-          height: 42,
+          width: 36,
+          height: 36,
           borderRadius: "50%",
           background: c.bg,
           display: "grid",
           placeItems: "center",
           color: c.fg,
-          fontSize: 18,
+          fontSize: 15,
           fontWeight: 700,
+          flexShrink: 0,
         }}
       >
         {icon || "●"}
@@ -870,6 +941,7 @@ function ProjectCards({ projects, onOpen }) {
               </div>
 
               <button
+                aria-label={`Ver ficha de ${p.nombre}`}
                 onClick={() => onOpen(p.id)}
                 style={{
                   border: `1px solid ${A3_BLUE}`,
@@ -946,12 +1018,12 @@ function ProjectCards({ projects, onOpen }) {
 
               <div className="project-card-wide" style={{ gridColumn: "1 / -1" }}>
                 <div style={cardLabelStyle}>Última novedad</div>
-                <div style={cardValueStyle}>{dashIfEmpty(p.actualizacion)}</div>
+                <div className="mobile-clamp" title={dashIfEmpty(p.actualizacion)} style={cardValueStyle}>{dashIfEmpty(p.actualizacion)}</div>
               </div>
 
               <div className="project-card-wide" style={{ gridColumn: "1 / -1" }}>
                 <div style={cardLabelStyle}>Próximo hito</div>
-                <div style={cardValueStyle}>{dashIfEmpty(p.proximoHito)}</div>
+                <div className="mobile-clamp" title={dashIfEmpty(p.proximoHito)} style={cardValueStyle}>{dashIfEmpty(p.proximoHito)}</div>
               </div>
             </div>
           </article>
@@ -1325,6 +1397,7 @@ function ProjectDetail({ project, onBack }) {
         }}
       >
         <button
+          aria-label="Volver al portfolio"
           onClick={onBack}
           style={{
             background: "none",
@@ -1437,7 +1510,7 @@ function ProjectDetail({ project, onBack }) {
             border: `1px solid ${BORDER}`,
             borderRadius: 12,
             padding: "16px 18px 18px",
-            marginTop: 16,
+            marginTop: 12,
             boxShadow: "0 6px 18px rgba(0,0,0,0.04)",
           }}
         >
@@ -1750,8 +1823,8 @@ export default function PortfolioCX() {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-            gap: 18,
-            marginBottom: 22,
+            gap: 14,
+            marginBottom: 16,
           }}
         >
           <KpiCard value={activos} label="Proyectos activos" tone="blue" icon="▣" />

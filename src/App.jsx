@@ -36,6 +36,7 @@ function normalizeEstado(rawStatus) {
   if (s.includes("en ejecucion")) return "EN EJECUCIÓN";
   if (s.includes("en validacion")) return "EN VALIDACIÓN";
   if (s.includes("en analisis")) return "EN ANÁLISIS";
+  if (s.includes("on hold") || s.includes("en pausa")) return "EN PAUSA";
   if (s.includes("finalizado") || s.includes("done") || s.includes("closed")) return "FINALIZADO";
   return (rawStatus || "").toUpperCase() || null;
 }
@@ -190,6 +191,7 @@ const ESTADO_STYLE = {
   "EN EJECUCIÓN": { bg: BLUE_BG, color: A3_BLUE, label: "En ejecución" },
   "EN VALIDACIÓN": { bg: BLUE_BG, color: A3_BLUE, label: "En validación" },
   "EN ANÁLISIS": { bg: GRAY_BG, color: TEXT, label: "En análisis" },
+  "EN PAUSA": { bg: YELLOW_BG, color: YELLOW, label: "En pausa" },
   "NO INICIADO": { bg: GRAY_BG, color: A3_GRAY, label: "No iniciado" },
   FINALIZADO: { bg: GREEN_BG, color: GREEN, label: "Finalizado" },
 };

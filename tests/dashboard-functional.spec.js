@@ -171,45 +171,55 @@ test.describe("Portfolio de Proyectos CX - QA funcional completo", () => {
     }
   });
 
-  test("3. Todos los proyectos de ClickUp aparecen automáticamente en el dashboard", async ({
-    page,
-    request,
-  }) => {
-    const { projects } = await obtenerDatosClickUp(request);
+test("3. Todos los proyectos de ClickUp aparecen automáticamente en el dashboard", async ({
+  page,
+  request,
+}) => {
+  const { projects } = await obtenerDatosClickUp(request);
 
-    await page.goto(DASHBOARD_URL, {
-      waitUntil: "networkidle",
-    });
-
-    const rows = page.locator("tbody tr");
-
-    await expect(rows).toHaveCount(projects.length);
-
-    for (const project of projects) {
-      await expect(
-        page.getByText(project.name, {
-          exact: true,
-        })
-      ).toBeVisible();
-    }
+  await page.goto(DASHBOARD_URL, {
+    waitUntil: "networkidle",
   });
 
-  test("4. Cada proyecto tiene un botón Ver ficha", async ({
-    page,
-    request,
-  }) => {
-    const { projects } = await obtenerDatosClickUp(request);
+  // Usa únicamente la representación visible:
+  // tabla en desktop o tarjetas en tablet/mobile.
+  const portfolioVisible = page.locator(
+    ".portfolio-table-desktop:visible, .portfolio-cards-responsive:visible"
+  );
 
-    await page.goto(DASHBOARD_URL, {
-      waitUntil: "networkidle",
-    });
+  await expect(portfolioVisible).toBeVisible();
 
-    const buttons = page.getByRole("button", {
-      name: /Ver ficha/i,
-    });
+  for (const project of projects) {
+    await expect(
+      portfolioVisible.getByText(project.name, {
+        exact: true,
+      })
+    ).toBeVisible();
+  }
+});
 
-    await expect(buttons).toHaveCount(projects.length);
+test("4. Cada proyecto tiene un botón Ver ficha", async ({
+  page,
+  request,
+}) => {
+  const { projects } = await obtenerDatosClickUp(request);
+
+  await page.goto(DASHBOARD_URL, {
+    waitUntil: "networkidle",
   });
+
+  const portfolioVisible = page.locator(
+    ".portfolio-table-desktop:visible, .portfolio-cards-responsive:visible"
+  );
+
+  await expect(portfolioVisible).toBeVisible();
+
+  const buttons = portfolioVisible.getByRole("button", {
+    name: /Ver ficha/i,
+  });
+
+  await expect(buttons).toHaveCount(projects.length);
+});
 
   test("5. El avance mostrado coincide con el avance calculado desde actividades y entregables", async ({
     page,

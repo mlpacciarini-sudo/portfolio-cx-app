@@ -154,3 +154,4 @@ computadora y tipear comandos. Los archivos que lo controlan ya están en
   claude.ai).
 - Cada carga o recarga de la página vuelve a consultar el endpoint, por lo
   que los cambios hechos en ClickUp se reflejan automáticamente.
+Actualización de despliegue.

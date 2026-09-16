@@ -613,12 +613,11 @@ export default function PortfolioCX() {
 
         {!loading && !error && view === "portfolio" && (
           <>
-            <div style={{ marginBottom: 30 }}>
-              <div style={{ fontSize: 11.5, color: COPPER, letterSpacing: 1, marginBottom: 8 }}>
-                DIRECCIÓN DE EXPERIENCIA DE CLIENTE
-              </div>
-              <h1 style={{ fontFamily: serif, fontSize: 32, color: PAPER, margin: 0 }}>Portfolio CX</h1>
-            </div>
+<div style={{ marginBottom: 30 }}>
+  <h1 style={{ fontFamily: serif, fontSize: 32, color: PAPER, margin: 0 }}>
+    Portfolio de Proyectos CX
+  </h1>
+</div>
 
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 34 }}>
               <KpiCard label="Total de proyectos" value={total} />

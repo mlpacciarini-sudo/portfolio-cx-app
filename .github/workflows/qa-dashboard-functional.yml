@@ -1,0 +1,48 @@
+name: QA funcional dashboard
+
+on:
+  push:
+    branches:
+      - main
+      - principal
+
+  pull_request:
+    branches:
+      - main
+      - principal
+
+  workflow_dispatch:
+
+jobs:
+  dashboard-functional:
+    name: Playwright - Dashboard productivo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Ejecutar pruebas funcionales
+        env:
+          DASHBOARD_URL: https://portfolio-cx-app.vercel.app/
+        run: npx playwright test tests/dashboard-functional.spec.js --project=chromium
+
+      - name: Guardar reporte
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-functional-report
+          path: playwright-report/
+          retention-days: 14

@@ -534,17 +534,303 @@ const tdStyle = {
   verticalAlign: "middle",
 };
 
-// ---------- Ficha existente, simplificada ----------
+// ---------- Ficha de proyecto ----------
 
-function FactItem({ label, value }) {
-  if (value === undefined || value === null || value === "" || value === "No aplica")
+function SummaryItem({ icon, label, value, tone = "blue", emphasis = false }) {
+  if (value === undefined || value === null || value === "" || value === "No aplica") {
     return null;
+  }
+
+  const tones = {
+    blue: { fg: A3_BLUE, bg: BLUE_BG },
+    red: { fg: RED, bg: RED_BG },
+    yellow: { fg: YELLOW, bg: YELLOW_BG },
+  };
+
+  const c = tones[tone] || tones.blue;
 
   return (
-    <div style={{ padding: "10px 0", borderBottom: `1px solid ${BORDER}` }}>
-      <div style={{ fontSize: 11, color: A3_GRAY, marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 14, color: A3_NAVY }}>{value}</div>
+    <div
+      style={{
+        display: "flex",
+        gap: 12,
+        alignItems: "flex-start",
+        minWidth: 0,
+        padding: "2px 14px 2px 0",
+      }}
+    >
+      <div
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: "50%",
+          background: c.bg,
+          color: c.fg,
+          display: "grid",
+          placeItems: "center",
+          flexShrink: 0,
+          fontSize: 17,
+          fontWeight: 700,
+        }}
+      >
+        {icon}
+      </div>
+
+      <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 11,
+            color: A3_GRAY,
+            marginBottom: 5,
+            fontWeight: 600,
+          }}
+        >
+          {label}
+        </div>
+        <div
+          style={{
+            fontSize: 13,
+            color: emphasis ? RED : A3_NAVY,
+            lineHeight: 1.45,
+            fontWeight: emphasis ? 700 : 600,
+            overflowWrap: "anywhere",
+          }}
+        >
+          {value}
+        </div>
+      </div>
     </div>
+  );
+}
+
+function ActivityRow({ activity }) {
+  const est =
+    ESTADO_STYLE[activity.estado] || {
+      bg: GRAY_BG,
+      color: A3_GRAY,
+      label: dashIfEmpty(activity.estado),
+    };
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(260px, 1fr) 180px 250px",
+        gap: 20,
+        alignItems: "center",
+        padding: "11px 14px",
+        borderTop: `1px solid ${BORDER}`,
+        background: WHITE,
+      }}
+    >
+      <div style={{ fontSize: 13, color: TEXT }}>{activity.nombre}</div>
+
+      <div>
+        <StatusPill bg={est.bg} color={est.color} dot>
+          {est.label}
+        </StatusPill>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div
+          style={{
+            width: 42,
+            fontSize: 12,
+            fontWeight: 700,
+            color: A3_NAVY,
+            flexShrink: 0,
+          }}
+        >
+          {activity.avance}%
+        </div>
+
+        <div
+          style={{
+            height: 7,
+            background: "#E6EAF0",
+            borderRadius: 999,
+            overflow: "hidden",
+            flex: 1,
+          }}
+        >
+          <div
+            style={{
+              width: `${Math.max(0, Math.min(100, activity.avance || 0))}%`,
+              height: "100%",
+              background: A3_BLUE,
+              borderRadius: 999,
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Deliverable({ entregable, number, initialOpen = false }) {
+  const [open, setOpen] = useState(initialOpen);
+  const count = entregable.actividades.length;
+
+  return (
+    <div
+      style={{
+        border: `1px solid ${BORDER}`,
+        borderRadius: 10,
+        overflow: "hidden",
+        background: WHITE,
+        marginTop: 10,
+      }}
+    >
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          width: "100%",
+          border: "none",
+          background: WHITE,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "12px 14px",
+          cursor: "pointer",
+          fontFamily: font,
+          textAlign: "left",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <div
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: "50%",
+              background: number === 1 ? A3_BLUE : "#758AA8",
+              color: WHITE,
+              display: "grid",
+              placeItems: "center",
+              fontWeight: 700,
+              fontSize: 13,
+              flexShrink: 0,
+            }}
+          >
+            {number}
+          </div>
+
+          <div
+            style={{
+              color: A3_NAVY,
+              fontSize: 14,
+              fontWeight: 700,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {entregable.nombre}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+          <span
+            style={{
+              background: BLUE_BG,
+              color: TEXT,
+              padding: "5px 9px",
+              borderRadius: 999,
+              fontSize: 11,
+            }}
+          >
+            {count} {count === 1 ? "actividad" : "actividades"}
+          </span>
+          <span style={{ color: A3_NAVY, fontSize: 16 }}>{open ? "⌃" : "⌄"}</span>
+        </div>
+      </button>
+
+      {open && (
+        <div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(260px, 1fr) 180px 250px",
+              gap: 20,
+              padding: "9px 14px",
+              background: "#F4F6F8",
+              color: A3_NAVY,
+              fontSize: 11,
+              fontWeight: 700,
+            }}
+          >
+            <div>Actividad</div>
+            <div>Estado</div>
+            <div>% Avance</div>
+          </div>
+
+          {count === 0 ? (
+            <div style={{ padding: 16, fontSize: 12, color: A3_GRAY }}>
+              Sin actividades cargadas.
+            </div>
+          ) : (
+            entregable.actividades.map((a) => (
+              <ActivityRow key={a.id} activity={a} />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectHeader() {
+  return (
+    <header
+      style={{
+        background: A3_NAVY,
+        color: WHITE,
+        padding: "22px 34px",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 1500,
+          margin: "0 auto",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 20,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              paddingRight: 24,
+              borderRight: "1px solid rgba(255,255,255,.35)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 32,
+                fontWeight: 800,
+                lineHeight: 1,
+                letterSpacing: -2,
+              }}
+            >
+              A<span style={{ color: A3_BLUE }}>3</span>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Mercados</div>
+          </div>
+
+          <div
+            style={{
+              fontSize: 28,
+              fontWeight: 700,
+            }}
+          >
+            Portfolio de Proyectos CX
+          </div>
+        </div>
+      </div>
+    </header>
   );
 }
 
@@ -557,17 +843,26 @@ function ProjectDetail({ project, onBack }) {
     };
 
   const sit = getSituation(project);
+  const pri = priorityStyle(project.prioridad);
 
   return (
     <div
       style={{
-        background: "#F7F9FB",
         minHeight: "100vh",
-        padding: "34px 40px 60px",
+        background: "#F7F9FB",
         fontFamily: font,
+        color: TEXT,
       }}
     >
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+      <ProjectHeader />
+
+      <main
+        style={{
+          maxWidth: 1500,
+          margin: "0 auto",
+          padding: "18px 30px 40px",
+        }}
+      >
         <button
           onClick={onBack}
           style={{
@@ -577,70 +872,210 @@ function ProjectDetail({ project, onBack }) {
             cursor: "pointer",
             fontSize: 13,
             fontWeight: 600,
-            padding: 0,
-            marginBottom: 22,
+            padding: "4px 0",
+            marginBottom: 14,
             fontFamily: font,
           }}
         >
           ← Volver al portfolio
         </button>
 
-        <h1
-          style={{
-            color: A3_NAVY,
-            fontSize: 28,
-            margin: "0 0 14px",
-          }}
-        >
-          {project.nombre}
-        </h1>
-
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
-          <StatusPill bg={est.bg} color={est.color}>
-            {est.label}
-          </StatusPill>
-          <StatusPill bg={sit.bg} color={sit.color} dot>
-            {sit.label}
-          </StatusPill>
-        </div>
-
-        <div
+        {/* Cabecera del proyecto */}
+        <section
           style={{
             background: WHITE,
             border: `1px solid ${BORDER}`,
             borderRadius: 12,
-            padding: "22px 24px",
+            padding: "18px 20px",
+            display: "grid",
+            gridTemplateColumns: "minmax(300px, 1.3fr) minmax(600px, 2fr) 250px",
+            gap: 20,
+            alignItems: "center",
+            boxShadow: "0 6px 18px rgba(0,0,0,0.04)",
+          }}
+        >
+          <h1
+            style={{
+              margin: 0,
+              color: A3_NAVY,
+              fontSize: 27,
+              lineHeight: 1.15,
+              fontWeight: 700,
+            }}
+          >
+            {project.nombre}
+          </h1>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <StatusPill bg={est.bg} color={est.color}>
+              Estado: {est.label}
+            </StatusPill>
+
+            <StatusPill bg={sit.bg} color={sit.color}>
+              Situación: {sit.label}
+            </StatusPill>
+
+            {project.prioridad !== "—" && (
+              <StatusPill bg={pri.bg} color={pri.color}>
+                Prioridad: {project.prioridad}
+              </StatusPill>
+            )}
+          </div>
+
+          <div
+            style={{
+              borderLeft: `1px solid ${BORDER}`,
+              paddingLeft: 22,
+            }}
+          >
+            <div style={{ fontSize: 11, color: A3_GRAY, marginBottom: 6, fontWeight: 600 }}>
+              % Avance
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div
+                style={{
+                  color: A3_NAVY,
+                  fontSize: 28,
+                  fontWeight: 700,
+                  minWidth: 62,
+                }}
+              >
+                {project.avance != null ? `${project.avance}%` : "—"}
+              </div>
+
+              <div
+                style={{
+                  flex: 1,
+                  height: 9,
+                  background: "#E6EAF0",
+                  borderRadius: 999,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${Math.max(0, Math.min(100, project.avance || 0))}%`,
+                    height: "100%",
+                    background: A3_BLUE,
+                    borderRadius: 999,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Resumen ejecutivo */}
+        <section
+          style={{
+            background: WHITE,
+            border: `1px solid ${BORDER}`,
+            borderRadius: 12,
+            padding: "16px 18px 18px",
+            marginTop: 16,
+            boxShadow: "0 6px 18px rgba(0,0,0,0.04)",
           }}
         >
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-              gap: "0 28px",
+              fontSize: 18,
+              fontWeight: 700,
+              color: A3_NAVY,
+              marginBottom: 16,
             }}
           >
-            <FactItem label="Responsable" value={project.focal} />
-            <FactItem label="Sponsor" value={project.sponsor} />
-            <FactItem label="Estado" value={est.label} />
-            <FactItem label="Situación" value={sit.label} />
-            <FactItem label="Prioridad" value={project.prioridad} />
-            <FactItem label="% Avance" value={project.avance != null ? `${project.avance}%` : null} />
-            <FactItem label="Fecha objetivo" value={project.fechaObjetivo} />
-            <FactItem label="Nueva fecha" value={project.nuevaFechaObjetivo} />
-            <FactItem label="Próximo hito" value={project.proximoHito} />
-            <FactItem label="Última actualización" value={project.fechaUltimaActualizacion} />
+            Resumen ejecutivo
           </div>
 
-          <div style={{ marginTop: 18 }}>
-            <div style={{ fontSize: 11, color: A3_GRAY, marginBottom: 6 }}>
-              Última novedad
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7, minmax(150px, 1fr))",
+              gap: 0,
+              overflowX: "auto",
+            }}
+          >
+            <SummaryItem icon="♙" label="Responsable" value={project.focal} />
+            <SummaryItem icon="♟" label="Sponsor" value={project.sponsor} />
+            <SummaryItem icon="□" label="Fecha objetivo" value={project.fechaObjetivo} />
+            <SummaryItem
+              icon="□"
+              label="Nueva fecha"
+              value={project.nuevaFechaObjetivo}
+              tone="red"
+              emphasis={Boolean(project.nuevaFechaObjetivo)}
+            />
+            <SummaryItem icon="⚑" label="Próximo hito" value={project.proximoHito} />
+            <SummaryItem
+              icon="▤"
+              label="Última novedad"
+              value={
+                project.actualizacion
+                  ? `${project.fechaUltimaActualizacion || ""}${project.fechaUltimaActualizacion ? " — " : ""}${project.actualizacion}`
+                  : null
+              }
+            />
+            <SummaryItem
+              icon="△"
+              label="Bloqueo / alerta"
+              value={project.justificacionDesvio}
+              tone="yellow"
+            />
+          </div>
+        </section>
+
+        {/* Entregables */}
+        <section
+          style={{
+            background: WHITE,
+            border: `1px solid ${BORDER}`,
+            borderRadius: 12,
+            padding: "16px 18px 18px",
+            marginTop: 16,
+            boxShadow: "0 6px 18px rgba(0,0,0,0.04)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 20,
+              alignItems: "center",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 18,
+                fontWeight: 700,
+                color: A3_NAVY,
+              }}
+            >
+              Entregables e hitos
             </div>
-            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.6 }}>
-              {dashIfEmpty(project.actualizacion)}
+
+            <div style={{ fontSize: 12, color: A3_GRAY }}>
+              {project.entregables.length}{" "}
+              {project.entregables.length === 1 ? "entregable" : "entregables"} en total
             </div>
           </div>
-        </div>
-      </div>
+
+          {project.entregables.length === 0 ? (
+            <div style={{ marginTop: 14, fontSize: 13, color: A3_GRAY }}>
+              Este proyecto no tiene entregables cargados en ClickUp.
+            </div>
+          ) : (
+            project.entregables.map((e, index) => (
+              <Deliverable
+                key={e.id}
+                entregable={e}
+                number={index + 1}
+                initialOpen={index === 0}
+              />
+            ))
+          )}
+        </section>
+      </main>
     </div>
   );
 }

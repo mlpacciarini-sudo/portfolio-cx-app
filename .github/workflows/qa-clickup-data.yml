@@ -28,4 +28,4 @@ jobs:
           node-version: "20"
 
       - name: Ejecutar pruebas de datos ClickUp
-        run: node --test pruebas/clickup-data.test.mjs
+        run: node --test test/clickup-data.test.mjs

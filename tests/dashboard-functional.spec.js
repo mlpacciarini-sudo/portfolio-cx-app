@@ -489,5 +489,170 @@ test("4. Cada proyecto tiene un botón Ver ficha", async ({
       )
     ).toHaveCount(0);
   });
+const RESPONSIVE_VIEWPORTS = [
+  { name: "desktop-grande", width: 1920, height: 1080 },
+  { name: "notebook", width: 1366, height: 768 },
+  { name: "tablet-horizontal", width: 1024, height: 768 },
+  { name: "tablet-vertical", width: 768, height: 1024 },
+  { name: "mobile", width: 390, height: 844 },
+];
 
+for (const viewport of RESPONSIVE_VIEWPORTS) {
+  test(`13. Responsive ${viewport.name}: no hay scroll horizontal`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+
+    await page.goto(DASHBOARD_URL, {
+      waitUntil: "networkidle",
+    });
+
+    const overflow = await page.evaluate(() => ({
+      bodyScrollWidth: document.body.scrollWidth,
+      bodyClientWidth: document.body.clientWidth,
+      htmlScrollWidth: document.documentElement.scrollWidth,
+      htmlClientWidth: document.documentElement.clientWidth,
+    }));
+
+    expect(
+      overflow.bodyScrollWidth,
+      `Overflow horizontal en body para ${viewport.name}`
+    ).toBeLessThanOrEqual(overflow.bodyClientWidth + 1);
+
+    expect(
+      overflow.htmlScrollWidth,
+      `Overflow horizontal en html para ${viewport.name}`
+    ).toBeLessThanOrEqual(overflow.htmlClientWidth + 1);
+  });
+
+  test(`14. Responsive ${viewport.name}: el contenido principal sigue visible`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+
+    await page.goto(DASHBOARD_URL, {
+      waitUntil: "networkidle",
+    });
+
+    await expect(
+      page.getByText("Portfolio de Proyectos CX", {
+        exact: true,
+      })
+    ).toBeVisible();
+
+    await expect(
+      page.getByText("Proyectos activos", {
+        exact: true,
+      })
+    ).toBeVisible();
+
+    const visiblePortfolio = page.locator(
+      ".portfolio-table-desktop:visible, .portfolio-cards-responsive:visible"
+    );
+
+    await expect(visiblePortfolio).toBeVisible();
+
+    const verFicha = visiblePortfolio.getByRole("button", {
+      name: /Ver ficha/i,
+    });
+
+    expect(await verFicha.count()).toBeGreaterThan(0);
+  });
+}
+
+test("15. En desktop se muestra la tabla", async ({ page }) => {
+  await page.setViewportSize({
+    width: 1920,
+    height: 1080,
+  });
+
+  await page.goto(DASHBOARD_URL, {
+    waitUntil: "networkidle",
+  });
+
+  await expect(
+    page.locator(".portfolio-table-desktop")
+  ).toBeVisible();
+
+  await expect(
+    page.locator(".portfolio-cards-responsive")
+  ).toBeHidden();
+});
+
+test("16. En tablet/mobile se muestran tarjetas y no la tabla", async ({
+  page,
+}) => {
+  const viewports = [
+    { width: 1024, height: 768 },
+    { width: 768, height: 1024 },
+    { width: 390, height: 844 },
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+
+    await page.goto(DASHBOARD_URL, {
+      waitUntil: "networkidle",
+    });
+
+    await expect(
+      page.locator(".portfolio-cards-responsive")
+    ).toBeVisible();
+
+    await expect(
+      page.locator(".portfolio-table-desktop")
+    ).toBeHidden();
+  }
+});
+
+test("17. La ficha tampoco tiene overflow horizontal en mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({
+    width: 390,
+    height: 844,
+  });
+
+  await page.goto(DASHBOARD_URL, {
+    waitUntil: "networkidle",
+  });
+
+  const portfolioVisible = page.locator(
+    ".portfolio-cards-responsive:visible"
+  );
+
+  await portfolioVisible
+    .getByRole("button", {
+      name: /Ver ficha/i,
+    })
+    .first()
+    .click();
+
+  await expect(
+    page.getByRole("button", {
+      name: /Volver al portfolio/i,
+    })
+  ).toBeVisible();
+
+  const overflow = await page.evaluate(() => ({
+    bodyScrollWidth: document.body.scrollWidth,
+    bodyClientWidth: document.body.clientWidth,
+    htmlScrollWidth: document.documentElement.scrollWidth,
+    htmlClientWidth: document.documentElement.clientWidth,
+  }));
+
+  expect(
+    overflow.bodyScrollWidth
+  ).toBeLessThanOrEqual(overflow.bodyClientWidth + 1);
+
+  expect(
+    overflow.htmlScrollWidth
+  ).toBeLessThanOrEqual(overflow.htmlClientWidth + 1);
+});
 });

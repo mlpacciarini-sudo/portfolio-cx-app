@@ -1,38 +1,27 @@
 import React, { useState, useEffect } from "react";
 
-const NAVY = "#141B24";
-const PANEL = "#1B2430";
-const PANEL_2 = "#212B39";
-const LINE = "#2C3846";
-const PAPER = "#EDEAE2";
-const MUTED = "#8D96A3";
-const COPPER = "#C4864A";
-const TEAL = "#4F9E93";
-const AMBER = "#D8A441";
-const RUST = "#C05B41";
-
-const serif = "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif";
-const sans = "'Inter', 'Helvetica Neue', Arial, sans-serif";
-
 const API_URL = "https://clickup-proxy-api-ten.vercel.app/api/clickup";
 
-// ---------- Estilos por estado / semáforo (idénticos a la versión original) ----------
+// ===== A3 Brand =====
+const A3_NAVY = "#001645";
+const A3_BLUE = "#0078FF";
+const A3_LIGHT = "#EEEFEF";
+const A3_GRAY = "#808285";
+const WHITE = "#FFFFFF";
+const TEXT = "#16325C";
+const BORDER = "#DDE3EA";
+const ROW_ALT = "#FAFBFC";
 
-const ESTADO_STYLE = {
-  "EN PREPARACIÓN": { color: AMBER, label: "En preparación" },
-  "EN EJECUCIÓN": { color: TEAL, label: "En ejecución" },
-  FINALIZADO: { color: "#7BAF8C", label: "Finalizado" },
-  "EN VALIDACIÓN": { color: COPPER, label: "En validación" },
-  "NO INICIADO": { color: MUTED, label: "No iniciado" },
-};
-const ESTADO_FALLBACK = { color: MUTED, label: "—" };
+const GREEN = "#00A878";
+const GREEN_BG = "#DFF6ED";
+const YELLOW = "#F2A900";
+const YELLOW_BG = "#FFF1CF";
+const RED = "#E61E32";
+const RED_BG = "#FDE5E8";
+const BLUE_BG = "#E7F1FF";
+const GRAY_BG = "#EEF1F4";
 
-const SEMAFORO_STYLE = {
-  "en fecha": { color: TEAL, label: "En fecha" },
-  "con desvío": { color: AMBER, label: "Con desvío" },
-  "en riesgo": { color: AMBER, label: "En riesgo" },
-  "crítico": { color: RUST, label: "Crítico" },
-};
+const font = "'Montserrat', Arial, sans-serif";
 
 // ---------- Normalización de datos crudos de ClickUp ----------
 
@@ -46,6 +35,7 @@ function normalizeEstado(rawStatus) {
   if (s.includes("en preparacion")) return "EN PREPARACIÓN";
   if (s.includes("en ejecucion")) return "EN EJECUCIÓN";
   if (s.includes("en validacion")) return "EN VALIDACIÓN";
+  if (s.includes("en analisis")) return "EN ANÁLISIS";
   if (s.includes("finalizado") || s.includes("done") || s.includes("closed")) return "FINALIZADO";
   return (rawStatus || "").toUpperCase() || null;
 }
@@ -116,17 +106,33 @@ function formatDate(msValue) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+function formatDateTime(d) {
+  if (!d) return "—";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} · ${hh}:${min}`;
+}
+
 function dashIfEmpty(v) {
   return v === undefined || v === null || v === "" ? "—" : v;
 }
 
-// ---------- Transformación de un task crudo de ClickUp a la forma que usa la UI ----------
+// ---------- Transformación ClickUp -> UI ----------
 
 function buildProjectFromTask(task, entregablesRaw, allTasks) {
   const estado = normalizeEstado(task.status && task.status.status);
   const avance = cfNumberPercent(task, "% Avance");
-  const semaforoLabelRaw = cfDropdownLabel(task, "Semaforo ejecutivo") || cfDropdownLabel(task, "Semáforo ejecutivo");
-  const semaforoKey = semaforoLabelRaw ? stripAccents(semaforoLabelRaw.toLowerCase()) : null;
+
+  const semaforoLabelRaw =
+    cfDropdownLabel(task, "Semaforo ejecutivo") ||
+    cfDropdownLabel(task, "Semáforo ejecutivo");
+
+  const semaforoKey = semaforoLabelRaw
+    ? stripAccents(semaforoLabelRaw.toLowerCase())
+    : null;
 
   const entregables = entregablesRaw
     .filter((e) => e.parent === task.id)
@@ -138,7 +144,7 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
     nombre: task.name,
     estado,
     prioridad: normalizePriority(task.priority && task.priority.priority),
-    avance: avance,
+    avance,
     sponsor: cfDropdownLabel(task, "Sponsor"),
     focal: cfUsers(task, "Focal"),
     semaforoLabel: semaforoLabelRaw,
@@ -146,9 +152,15 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
     fechaInicio: formatDate(task.start_date),
     fechaObjetivo: cfDate(task, "Fecha objetivo"),
     nuevaFechaObjetivo: cfDate(task, "Nueva fecha objetivo"),
-    justificacionDesvio: cfText(task, "Justifica desvio") || cfText(task, "Justifica desvío"),
+    justificacionDesvio:
+      cfText(task, "Justifica desvio") || cfText(task, "Justifica desvío"),
     actualizacion: cfText(task, "Actualización / Novedad"),
+    proximoHito:
+      cfText(task, "Próximo hito") ||
+      cfText(task, "Proximo hito") ||
+      cfText(task, "Próximo Hito"),
     fechaUltimaActualizacion: formatDate(task.date_updated),
+    rawDateUpdated: task.date_updated ? Number(task.date_updated) : null,
     entregables,
   };
 }
@@ -163,6 +175,7 @@ function buildEntregable(task, allTasks) {
       estado: normalizeEstado(a.status && a.status.status),
       avance: cfNumberPercent(a, "% Avance") ?? 0,
     }));
+
   return {
     id: task.id,
     nombre: task.name,
@@ -170,362 +183,476 @@ function buildEntregable(task, allTasks) {
   };
 }
 
-function generarDondeEstamos(p) {
-  const partes = [];
-  if (p.avance !== null && p.avance !== undefined) {
-    partes.push(`El proyecto muestra un avance del ${p.avance}%`);
-  } else {
-    partes.push("El proyecto no registra un porcentaje de avance cargado");
+// ---------- Estilos ----------
+
+const ESTADO_STYLE = {
+  "EN PREPARACIÓN": { bg: GRAY_BG, color: TEXT, label: "En preparación" },
+  "EN EJECUCIÓN": { bg: BLUE_BG, color: A3_BLUE, label: "En ejecución" },
+  "EN VALIDACIÓN": { bg: BLUE_BG, color: A3_BLUE, label: "En validación" },
+  "EN ANÁLISIS": { bg: GRAY_BG, color: TEXT, label: "En análisis" },
+  "NO INICIADO": { bg: GRAY_BG, color: A3_GRAY, label: "No iniciado" },
+  FINALIZADO: { bg: GREEN_BG, color: GREEN, label: "Finalizado" },
+};
+
+function getSituation(project) {
+  const k = stripAccents((project.semaforoKey || "").toLowerCase());
+
+  if (k.includes("critico")) {
+    return { label: "Crítico", color: RED, bg: RED_BG };
   }
-  const estadoLabel = (ESTADO_STYLE[p.estado] || ESTADO_FALLBACK).label;
-  partes.push(`con estado ${estadoLabel.toLowerCase()}`);
-  if (p.semaforoLabel) {
-    partes.push(`y semáforo ejecutivo "${p.semaforoLabel}"`);
+
+  if (k.includes("con desvio") || k.includes("en riesgo") || k.includes("atencion")) {
+    return { label: "En atención", color: YELLOW, bg: YELLOW_BG };
   }
-  let resumen = partes.join(", ") + ".";
-  if (p.justificacionDesvio) {
-    resumen += ` Desvío justificado: ${p.justificacionDesvio}.`;
+
+  if (k.includes("en fecha")) {
+    return { label: "En fecha", color: GREEN, bg: GREEN_BG };
   }
-  if (p.actualizacion) {
-    resumen += ` ${p.actualizacion}`;
-  }
-  return resumen;
+
+  return { label: "—", color: A3_GRAY, bg: GRAY_BG };
 }
 
-// ---------- Componentes visuales (idénticos a la versión original) ----------
+function priorityStyle(p) {
+  if (p === "Alta") return { color: RED, bg: RED_BG };
+  if (p === "Media") return { color: A3_BLUE, bg: BLUE_BG };
+  if (p === "Baja") return { color: TEXT, bg: GRAY_BG };
+  return { color: A3_GRAY, bg: GRAY_BG };
+}
 
-function Pill({ color, children }) {
+// ---------- UI ----------
+
+function StatusPill({ bg, color, children, dot = false }) {
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 6,
-        fontSize: 12,
-        letterSpacing: 0.2,
+        gap: 7,
+        padding: "6px 10px",
+        borderRadius: 999,
+        background: bg,
         color,
-        border: `1px solid ${color}55`,
-        background: `${color}18`,
-        borderRadius: 4,
-        padding: "3px 9px",
-        fontFamily: sans,
-        fontWeight: 500,
+        fontSize: 12,
+        fontWeight: 600,
+        whiteSpace: "nowrap",
       }}
     >
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
+      {dot && (
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: color,
+            flexShrink: 0,
+          }}
+        />
+      )}
       {children}
     </span>
   );
 }
 
-function ProgressBar({ value, color }) {
-  const v = typeof value === "number" ? value : 0;
-  return (
-    <div style={{ background: "#0F151C", borderRadius: 3, height: 5, width: "100%", overflow: "hidden" }}>
-      <div style={{ width: `${v}%`, background: color, height: "100%", borderRadius: 3 }} />
-    </div>
-  );
-}
+function KpiCard({ value, label, tone = "blue", icon }) {
+  const map = {
+    blue: { fg: A3_BLUE, bg: "#E7F1FF" },
+    green: { fg: GREEN, bg: "#DFF6ED" },
+    yellow: { fg: YELLOW, bg: "#FFF1CF" },
+    red: { fg: RED, bg: "#FDE5E8" },
+  };
 
-function KpiCard({ label, value, accent }) {
+  const c = map[tone];
+
   return (
     <div
       style={{
-        background: PANEL,
-        border: `1px solid ${LINE}`,
-        borderRadius: 6,
+        background: WHITE,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 12,
         padding: "18px 20px",
-        flex: "1 1 150px",
-        minWidth: 130,
-      }}
-    >
-      <div style={{ fontFamily: sans, fontSize: 11.5, color: MUTED, letterSpacing: 0.3, marginBottom: 10 }}>
-        {label}
-      </div>
-      <div style={{ fontFamily: serif, fontSize: 30, color: accent || PAPER, lineHeight: 1 }}>{value}</div>
-    </div>
-  );
-}
-
-function ProjectCard({ project, onOpen }) {
-  const est = ESTADO_STYLE[project.estado] || ESTADO_FALLBACK;
-  const sem = project.semaforoKey ? SEMAFORO_STYLE[project.semaforoKey] : null;
-  return (
-    <button
-      onClick={() => onOpen(project.id)}
-      style={{
-        textAlign: "left",
-        background: PANEL,
-        border: `1px solid ${LINE}`,
-        borderRadius: 6,
-        padding: "20px 22px",
-        cursor: "pointer",
-        width: "100%",
-        display: "block",
-        fontFamily: sans,
-        transition: "border-color 0.15s ease, background 0.15s ease",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = COPPER + "88")}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = LINE)}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: serif, fontSize: 19, color: PAPER, marginBottom: 12 }}>{project.nombre}</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Pill color={est.color}>{est.label}</Pill>
-            {sem && <Pill color={sem.color}>{sem.label}</Pill>}
-            {project.prioridad !== "—" && (
-              <span
-                style={{
-                  fontSize: 12,
-                  color: COPPER,
-                  border: `1px solid ${COPPER}55`,
-                  borderRadius: 4,
-                  padding: "3px 9px",
-                  fontWeight: 500,
-                }}
-              >
-                Prioridad {project.prioridad}
-              </span>
-            )}
-          </div>
-        </div>
-        <div style={{ textAlign: "right", minWidth: 90 }}>
-          <div style={{ fontFamily: serif, fontSize: 26, color: PAPER }}>
-            {project.avance !== null && project.avance !== undefined ? `${project.avance}%` : "—"}
-          </div>
-          <div style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>avance</div>
-        </div>
-      </div>
-      <div style={{ marginTop: 14 }}>
-        <ProgressBar value={project.avance} color={est.color} />
-      </div>
-      {project.actualizacion && (
-        <div style={{ marginTop: 14, fontSize: 13, color: MUTED, lineHeight: 1.55 }}>{project.actualizacion}</div>
-      )}
-      <div style={{ marginTop: 14, fontSize: 12, color: MUTED, display: "flex", justifyContent: "space-between" }}>
-        <span>Sponsor: {dashIfEmpty(project.sponsor)}</span>
-        <span style={{ color: COPPER }}>Ver ficha ejecutiva →</span>
-      </div>
-    </button>
-  );
-}
-
-function FactItem({ label, value }) {
-  if (value === undefined || value === null || value === "" || value === "No aplica") return null;
-  return (
-    <div style={{ padding: "10px 0", borderBottom: `1px solid ${LINE}` }}>
-      <div style={{ fontSize: 11, color: MUTED, marginBottom: 4, letterSpacing: 0.2 }}>{label}</div>
-      <div style={{ fontSize: 14, color: PAPER, fontFamily: sans }}>{value}</div>
-    </div>
-  );
-}
-
-function ActivityRow({ act }) {
-  const est = ESTADO_STYLE[act.estado] || ESTADO_FALLBACK;
-  return (
-    <div
-      style={{
+        boxShadow: "0 6px 18px rgba(0,0,0,0.04)",
+        minHeight: 92,
         display: "flex",
         alignItems: "center",
-        gap: 14,
-        padding: "10px 0",
-        borderBottom: `1px solid ${LINE}`,
+        justifyContent: "space-between",
       }}
     >
-      <div style={{ flex: 1, fontSize: 13.5, color: PAPER, fontFamily: sans }}>{act.nombre}</div>
-      <div style={{ width: 118, flexShrink: 0 }}>
-        <Pill color={est.color}>{est.label}</Pill>
+      <div>
+        <div
+          style={{
+            fontSize: 31,
+            lineHeight: 1,
+            fontWeight: 700,
+            color: A3_NAVY,
+            marginBottom: 8,
+          }}
+        >
+          {value}
+        </div>
+        <div style={{ fontSize: 14, color: A3_NAVY }}>{label}</div>
       </div>
-      <div style={{ width: 90, flexShrink: 0 }}>
-        <ProgressBar value={act.avance} color={est.color} />
+
+      <div
+        style={{
+          width: 42,
+          height: 42,
+          borderRadius: "50%",
+          background: c.bg,
+          display: "grid",
+          placeItems: "center",
+          color: c.fg,
+          fontSize: 18,
+          fontWeight: 700,
+        }}
+      >
+        {icon || "●"}
       </div>
-      <div style={{ width: 34, textAlign: "right", fontSize: 12.5, color: MUTED, flexShrink: 0 }}>{act.avance}%</div>
     </div>
   );
 }
 
-function Deliverable({ entregable }) {
-  const [open, setOpen] = useState(true);
-  const total = entregable.actividades.length;
-  const doneAvg = total
-    ? Math.round(entregable.actividades.reduce((s, a) => s + (a.avance || 0), 0) / total)
-    : 0;
+function Progress({ value }) {
+  const v = typeof value === "number" ? Math.max(0, Math.min(100, value)) : 0;
+
   return (
-    <div style={{ border: `1px solid ${LINE}`, borderRadius: 6, marginBottom: 10, overflow: "hidden" }}>
-      <button
-        onClick={() => setOpen(!open)}
+    <div style={{ minWidth: 78 }}>
+      <div
         style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "14px 18px",
-          background: PANEL_2,
-          border: "none",
-          cursor: "pointer",
-          textAlign: "left",
+          fontSize: 12,
+          fontWeight: 700,
+          color: A3_NAVY,
+          marginBottom: 6,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span
-            style={{
-              display: "inline-block",
-              transform: open ? "rotate(90deg)" : "rotate(0deg)",
-              transition: "transform 0.15s ease",
-              color: COPPER,
-              fontSize: 12,
-            }}
-          >
-            ▶
-          </span>
-          <span style={{ fontFamily: serif, fontSize: 15.5, color: PAPER }}>{entregable.nombre}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 12, color: MUTED }}>{total} actividades</span>
-          <span style={{ fontFamily: serif, fontSize: 15, color: COPPER, minWidth: 40, textAlign: "right" }}>
-            {doneAvg}%
-          </span>
-        </div>
-      </button>
-      {open && (
-        <div style={{ padding: "4px 18px 6px", background: PANEL }}>
-          {entregable.actividades.length === 0 && (
-            <div style={{ padding: "10px 0", fontSize: 13, color: MUTED }}>Sin actividades cargadas.</div>
-          )}
-          {entregable.actividades.map((a) => (
-            <ActivityRow key={a.id} act={a} />
-          ))}
-        </div>
-      )}
+        {typeof value === "number" ? `${value}%` : "—"}
+      </div>
+
+      <div
+        style={{
+          height: 6,
+          background: "#E6EAF0",
+          borderRadius: 999,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            width: `${v}%`,
+            background: A3_BLUE,
+            borderRadius: 999,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PortfolioTable({ projects, onOpen }) {
+  return (
+    <div
+      style={{
+        background: WHITE,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 12,
+        overflow: "hidden",
+        boxShadow: "0 6px 18px rgba(0,0,0,0.04)",
+      }}
+    >
+      <div style={{ overflowX: "auto" }}>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            minWidth: 1450,
+            tableLayout: "fixed",
+          }}
+        >
+          <colgroup>
+            <col style={{ width: 190 }} />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 90 }} />
+            <col style={{ width: 110 }} />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 200 }} />
+            <col style={{ width: 170 }} />
+            <col style={{ width: 120 }} />
+          </colgroup>
+
+          <thead>
+            <tr style={{ background: "#F4F6F8" }}>
+              {[
+                "Proyecto",
+                "Responsable",
+                "Estado",
+                "Situación",
+                "Prioridad",
+                "% Avance",
+                "Fecha objetivo",
+                "Nueva fecha",
+                "Última novedad",
+                "Próximo hito",
+                "Acciones",
+              ].map((h) => (
+                <th
+                  key={h}
+                  style={{
+                    textAlign: "left",
+                    padding: "14px 14px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: A3_NAVY,
+                    borderBottom: `1px solid ${BORDER}`,
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {projects.map((p, idx) => {
+              const est =
+                ESTADO_STYLE[p.estado] || {
+                  bg: GRAY_BG,
+                  color: A3_GRAY,
+                  label: dashIfEmpty(p.estado),
+                };
+
+              const sit = getSituation(p);
+              const pri = priorityStyle(p.prioridad);
+
+              return (
+                <tr
+                  key={p.id}
+                  style={{
+                    background: idx % 2 === 0 ? WHITE : ROW_ALT,
+                  }}
+                >
+                  <td style={tdStyle}>
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        color: A3_NAVY,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {p.nombre}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: A3_GRAY,
+                      }}
+                    >
+                      {dashIfEmpty(p.sponsor)}
+                    </div>
+                  </td>
+
+                  <td style={tdStyle}>{dashIfEmpty(p.focal)}</td>
+
+                  <td style={tdStyle}>
+                    <StatusPill bg={est.bg} color={est.color}>
+                      {est.label}
+                    </StatusPill>
+                  </td>
+
+                  <td style={tdStyle}>
+                    <StatusPill bg={sit.bg} color={sit.color} dot>
+                      {sit.label}
+                    </StatusPill>
+                  </td>
+
+                  <td style={tdStyle}>
+                    <StatusPill bg={pri.bg} color={pri.color}>
+                      {dashIfEmpty(p.prioridad)}
+                    </StatusPill>
+                  </td>
+
+                  <td style={tdStyle}>
+                    <Progress value={p.avance} />
+                  </td>
+
+                  <td style={tdStyle}>{dashIfEmpty(p.fechaObjetivo)}</td>
+
+                  <td
+                    style={{
+                      ...tdStyle,
+                      color: p.nuevaFechaObjetivo ? RED : TEXT,
+                      fontWeight: p.nuevaFechaObjetivo ? 600 : 400,
+                    }}
+                  >
+                    {dashIfEmpty(p.nuevaFechaObjetivo)}
+                  </td>
+
+                  <td style={{ ...tdStyle, lineHeight: 1.45 }}>
+                    {dashIfEmpty(p.actualizacion)}
+                  </td>
+
+                  <td style={{ ...tdStyle, lineHeight: 1.45 }}>
+                    {dashIfEmpty(p.proximoHito)}
+                  </td>
+
+                  <td style={tdStyle}>
+                    <button
+                      onClick={() => onOpen(p.id)}
+                      style={{
+                        border: `1px solid ${A3_BLUE}`,
+                        color: A3_BLUE,
+                        background: WHITE,
+                        borderRadius: 8,
+                        padding: "8px 12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontFamily: font,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Ver ficha →
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const tdStyle = {
+  padding: "14px",
+  fontSize: 12,
+  color: TEXT,
+  borderBottom: `1px solid ${BORDER}`,
+  verticalAlign: "middle",
+};
+
+// ---------- Ficha existente, simplificada ----------
+
+function FactItem({ label, value }) {
+  if (value === undefined || value === null || value === "" || value === "No aplica")
+    return null;
+
+  return (
+    <div style={{ padding: "10px 0", borderBottom: `1px solid ${BORDER}` }}>
+      <div style={{ fontSize: 11, color: A3_GRAY, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 14, color: A3_NAVY }}>{value}</div>
     </div>
   );
 }
 
 function ProjectDetail({ project, onBack }) {
-  const est = ESTADO_STYLE[project.estado] || ESTADO_FALLBACK;
-  const sem = project.semaforoKey ? SEMAFORO_STYLE[project.semaforoKey] : null;
+  const est =
+    ESTADO_STYLE[project.estado] || {
+      bg: GRAY_BG,
+      color: A3_GRAY,
+      label: dashIfEmpty(project.estado),
+    };
+
+  const sit = getSituation(project);
+
   return (
-    <div>
-      <button
-        onClick={onBack}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          background: "none",
-          border: "none",
-          color: MUTED,
-          fontSize: 13,
-          cursor: "pointer",
-          padding: "6px 0",
-          marginBottom: 20,
-          fontFamily: sans,
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = PAPER)}
-        onMouseLeave={(e) => (e.currentTarget.style.color = MUTED)}
-      >
-        <span style={{ fontSize: 15 }}>←</span> Volver al portfolio
-      </button>
-
-      <h1 style={{ fontFamily: serif, fontSize: 28, color: PAPER, margin: "0 0 14px", lineHeight: 1.2 }}>
-        {project.nombre}
-      </h1>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 28 }}>
-        <Pill color={est.color}>{est.label}</Pill>
-        {sem && <Pill color={sem.color}>{sem.label}</Pill>}
-        {project.prioridad !== "—" && (
-          <span
-            style={{
-              fontSize: 12,
-              color: COPPER,
-              border: `1px solid ${COPPER}55`,
-              borderRadius: 4,
-              padding: "3px 9px",
-              fontWeight: 500,
-              fontFamily: sans,
-            }}
-          >
-            Prioridad {project.prioridad}
-          </span>
-        )}
-      </div>
-
-      {/* Ficha ejecutiva */}
-      <div
-        style={{
-          background: PANEL,
-          border: `1px solid ${LINE}`,
-          borderRadius: 6,
-          padding: "20px 24px",
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ fontFamily: serif, fontSize: 15, color: COPPER, marginBottom: 6 }}>Ficha ejecutiva</div>
-        <div
+    <div
+      style={{
+        background: "#F7F9FB",
+        minHeight: "100vh",
+        padding: "34px 40px 60px",
+        fontFamily: font,
+      }}
+    >
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <button
+          onClick={onBack}
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-            columnGap: 28,
+            background: "none",
+            border: "none",
+            color: A3_BLUE,
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: 600,
+            padding: 0,
+            marginBottom: 22,
+            fontFamily: font,
           }}
         >
-          <FactItem label="Estado" value={est.label} />
-          <FactItem label="Focal" value={project.focal} />
-          <FactItem label="Sponsor" value={project.sponsor} />
-          <FactItem label="Prioridad" value={project.prioridad === "—" ? null : project.prioridad} />
-          <FactItem label="Fecha de inicio" value={project.fechaInicio} />
-          <FactItem label="Fecha objetivo" value={project.fechaObjetivo} />
-          <FactItem label="Nueva fecha objetivo" value={project.nuevaFechaObjetivo} />
-          <FactItem
-            label="% de avance"
-            value={project.avance !== null && project.avance !== undefined ? `${project.avance}%` : null}
-          />
-          <FactItem label="Semáforo ejecutivo" value={sem ? sem.label : null} />
-          <FactItem label="Justificación de desvío" value={project.justificacionDesvio} />
-          <FactItem label="Fecha de última actualización" value={project.fechaUltimaActualizacion} />
+          ← Volver al portfolio
+        </button>
+
+        <h1
+          style={{
+            color: A3_NAVY,
+            fontSize: 28,
+            margin: "0 0 14px",
+          }}
+        >
+          {project.nombre}
+        </h1>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
+          <StatusPill bg={est.bg} color={est.color}>
+            {est.label}
+          </StatusPill>
+          <StatusPill bg={sit.bg} color={sit.color} dot>
+            {sit.label}
+          </StatusPill>
         </div>
-        <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${LINE}` }}>
-          <div style={{ fontSize: 11, color: MUTED, marginBottom: 6 }}>Actualización / Novedad</div>
-          <div style={{ fontSize: 14, color: PAPER, lineHeight: 1.6, fontFamily: sans }}>
-            {dashIfEmpty(project.actualizacion)}
+
+        <div
+          style={{
+            background: WHITE,
+            border: `1px solid ${BORDER}`,
+            borderRadius: 12,
+            padding: "22px 24px",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+              gap: "0 28px",
+            }}
+          >
+            <FactItem label="Responsable" value={project.focal} />
+            <FactItem label="Sponsor" value={project.sponsor} />
+            <FactItem label="Estado" value={est.label} />
+            <FactItem label="Situación" value={sit.label} />
+            <FactItem label="Prioridad" value={project.prioridad} />
+            <FactItem label="% Avance" value={project.avance != null ? `${project.avance}%` : null} />
+            <FactItem label="Fecha objetivo" value={project.fechaObjetivo} />
+            <FactItem label="Nueva fecha" value={project.nuevaFechaObjetivo} />
+            <FactItem label="Próximo hito" value={project.proximoHito} />
+            <FactItem label="Última actualización" value={project.fechaUltimaActualizacion} />
+          </div>
+
+          <div style={{ marginTop: 18 }}>
+            <div style={{ fontSize: 11, color: A3_GRAY, marginBottom: 6 }}>
+              Última novedad
+            </div>
+            <div style={{ fontSize: 14, color: TEXT, lineHeight: 1.6 }}>
+              {dashIfEmpty(project.actualizacion)}
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Dónde estamos */}
-      <div
-        style={{
-          background: `${COPPER}12`,
-          border: `1px solid ${COPPER}44`,
-          borderRadius: 6,
-          padding: "18px 24px",
-          marginBottom: 28,
-        }}
-      >
-        <div style={{ fontFamily: serif, fontSize: 15, color: COPPER, marginBottom: 8 }}>Dónde estamos</div>
-        <div style={{ fontSize: 14, color: PAPER, lineHeight: 1.65, fontFamily: sans }}>
-          {generarDondeEstamos(project)}
-        </div>
-      </div>
-
-      {/* Entregables */}
-      <div style={{ fontFamily: serif, fontSize: 17, color: PAPER, marginBottom: 14 }}>Entregables y actividades</div>
-      {project.entregables.length === 0 ? (
-        <div style={{ fontSize: 13, color: MUTED }}>Este proyecto no tiene entregables cargados en ClickUp.</div>
-      ) : (
-        project.entregables.map((e) => <Deliverable key={e.id} entregable={e} />)
-      )}
     </div>
   );
 }
 
-// ---------- App principal: fetch de ClickUp + render ----------
+// ---------- App ----------
 
 export default function PortfolioCX() {
   const [view, setView] = useState("portfolio");
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loadedAt, setLoadedAt] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -533,22 +660,34 @@ export default function PortfolioCX() {
     async function load() {
       setLoading(true);
       setError(null);
+
       try {
         const res = await fetch(API_URL, { method: "GET" });
+
         if (!res.ok) {
-          throw new Error(`El servicio de ClickUp respondió con estado ${res.status}`);
+          throw new Error(
+            `El servicio de ClickUp respondió con estado ${res.status}`
+          );
         }
+
         const data = await res.json();
         const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+
         if (tasks.length === 0) {
           throw new Error("El endpoint respondió sin tareas.");
         }
+
         const topLevel = tasks.filter((t) => !t.parent);
+
         const built = topLevel
-          .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }))
+          .sort((a, b) =>
+            a.name.localeCompare(b.name, "es", { numeric: true })
+          )
           .map((t) => buildProjectFromTask(t, tasks, tasks));
+
         if (!cancelled) {
           setProjects(built);
+          setLoadedAt(new Date());
           setLoading(false);
         }
       } catch (err) {
@@ -560,90 +699,189 @@ export default function PortfolioCX() {
     }
 
     load();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const total = projects.length;
-  const enFecha = projects.filter((p) => p.semaforoKey === "en fecha").length;
-  const conDesvio = projects.filter(
-    (p) => p.semaforoKey === "con desvio" || p.semaforoKey === "con desvío" || p.semaforoKey === "en riesgo" || p.semaforoKey === "critico" || p.semaforoKey === "crítico"
-  ).length;
-  const enEjecucion = projects.filter((p) => p.estado === "EN EJECUCIÓN").length;
-  const finalizados = projects.filter((p) => p.estado === "FINALIZADO").length;
+  const activos = projects.filter((p) => p.estado !== "FINALIZADO").length;
+  const enFecha = projects.filter((p) => getSituation(p).label === "En fecha").length;
+  const enAtencion = projects.filter((p) => getSituation(p).label === "En atención").length;
+  const criticos = projects.filter((p) => getSituation(p).label === "Crítico").length;
 
   const project = projects.find((p) => p.id === view);
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          fontFamily: font,
+          color: A3_GRAY,
+          background: "#F7F9FB",
+        }}
+      >
+        Cargando datos…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          fontFamily: font,
+          background: "#F7F9FB",
+          padding: 30,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 700,
+            background: WHITE,
+            border: `1px solid ${RED_BG}`,
+            borderRadius: 12,
+            padding: 24,
+            color: RED,
+          }}
+        >
+          <strong>No se pudo cargar el Portfolio CX.</strong>
+          <div style={{ marginTop: 8, color: TEXT }}>{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view !== "portfolio" && project) {
+    return <ProjectDetail project={project} onBack={() => setView("portfolio")} />;
+  }
 
   return (
     <div
       style={{
-        background: NAVY,
         minHeight: "100vh",
-        padding: "36px 40px 60px",
-        fontFamily: sans,
+        background: "#F7F9FB",
+        fontFamily: font,
+        color: TEXT,
       }}
     >
-      <div style={{ maxWidth: 880, margin: "0 auto" }}>
-        {loading && (
-          <div style={{ color: MUTED, fontFamily: sans, fontSize: 14, padding: "60px 0", textAlign: "center" }}>
-            Cargando datos…
-          </div>
-        )}
+      <header
+        style={{
+          background: A3_NAVY,
+          color: WHITE,
+          padding: "22px 34px",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1500,
+            margin: "0 auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 20,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                paddingRight: 24,
+                borderRight: "1px solid rgba(255,255,255,.35)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 32,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  letterSpacing: -2,
+                }}
+              >
+                A<span style={{ color: A3_BLUE }}>3</span>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Mercados</div>
+            </div>
 
-        {!loading && error && (
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 28,
+                fontWeight: 700,
+              }}
+            >
+              Portfolio de Proyectos CX
+            </h1>
+          </div>
+
           <div
             style={{
-              color: RUST,
-              border: `1px solid ${RUST}55`,
-              background: `${RUST}15`,
-              borderRadius: 6,
-              padding: "20px 24px",
-              fontFamily: sans,
-              fontSize: 14,
-              lineHeight: 1.6,
+              textAlign: "right",
+              fontSize: 12,
+              lineHeight: 1.45,
+              opacity: 0.95,
             }}
           >
-            <div style={{ fontFamily: serif, fontSize: 16, marginBottom: 8, color: RUST }}>
-              No se pudo cargar el Portfolio CX
-            </div>
-            No fue posible obtener datos desde ClickUp ({API_URL}). Detalle: {error}
+            <div>Última actualización</div>
+            <div>{formatDateTime(loadedAt)}</div>
           </div>
-        )}
+        </div>
+      </header>
 
-        {!loading && !error && view === "portfolio" && (
-          <>
-<div style={{ marginBottom: 30 }}>
-  <h1 style={{ fontFamily: serif, fontSize: 32, color: PAPER, margin: 0 }}>
-    Portfolio de Proyectos CX
-  </h1>
-</div>
+      <main style={{ maxWidth: 1500, margin: "0 auto", padding: "24px 30px 34px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gap: 18,
+            marginBottom: 22,
+          }}
+        >
+          <KpiCard value={activos} label="Proyectos activos" tone="blue" icon="▣" />
+          <KpiCard value={enFecha} label="En fecha" tone="green" />
+          <KpiCard value={enAtencion} label="En atención" tone="yellow" />
+          <KpiCard value={criticos} label="Crítico" tone="red" />
+        </div>
 
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 34 }}>
-              <KpiCard label="Total de proyectos" value={total} />
-              <KpiCard label="En fecha" value={enFecha} accent={TEAL} />
-              <KpiCard label="Con desvío" value={conDesvio} accent={RUST} />
-              <KpiCard label="En ejecución" value={enEjecucion} accent={AMBER} />
-              <KpiCard label="Finalizados" value={finalizados} accent="#7BAF8C" />
-            </div>
+        <PortfolioTable projects={projects} onOpen={setView} />
 
-            <div style={{ fontFamily: serif, fontSize: 17, color: PAPER, marginBottom: 14 }}>Proyectos</div>
-            {projects.length === 0 ? (
-              <div style={{ fontSize: 13, color: MUTED }}>No hay proyectos de nivel superior en la lista de ClickUp.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {projects.map((p) => (
-                  <ProjectCard key={p.id} project={p} onOpen={setView} />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {!loading && !error && view !== "portfolio" && project && (
-          <ProjectDetail project={project} onBack={() => setView("portfolio")} />
-        )}
-      </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 16,
+            fontSize: 12,
+            color: A3_NAVY,
+          }}
+        >
+          <div>{projects.length} proyectos en total</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span>Mostrar</span>
+            <span
+              style={{
+                border: `1px solid ${BORDER}`,
+                background: WHITE,
+                borderRadius: 8,
+                padding: "7px 10px",
+                minWidth: 36,
+                textAlign: "center",
+              }}
+            >
+              10
+            </span>
+            <span>proyectos</span>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

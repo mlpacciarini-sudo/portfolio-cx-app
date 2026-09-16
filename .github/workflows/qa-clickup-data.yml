@@ -1,0 +1,31 @@
+name: QA datos ClickUp
+
+on:
+  push:
+    branches:
+      - main
+      - principal
+
+  pull_request:
+    branches:
+      - main
+      - principal
+
+  workflow_dispatch:
+
+jobs:
+  clickup-data-test:
+    name: Validar datos de ClickUp
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Ejecutar pruebas de datos ClickUp
+        run: node --test pruebas/clickup-data.test.mjs

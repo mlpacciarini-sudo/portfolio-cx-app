@@ -125,7 +125,7 @@ function dashIfEmpty(v) {
 
 function buildProjectFromTask(task, entregablesRaw, allTasks) {
   const estado = normalizeEstado(task.status && task.status.status);
-  const avance = cfNumberPercent(task, "% Avance");
+  const avanceManualProyecto = cfNumberPercent(task, "% Avance");
 
   const semaforoLabelRaw =
     cfDropdownLabel(task, "Semaforo ejecutivo") ||
@@ -140,12 +140,26 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
     .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }))
     .map((e) => buildEntregable(e, allTasks));
 
+  const avancesEntregables = entregables
+    .map((e) => e.avanceCalculado)
+    .filter((v) => typeof v === "number" && Number.isFinite(v));
+
+  const avanceCalculado =
+    avancesEntregables.length > 0
+      ? Math.round(
+          (avancesEntregables.reduce((sum, v) => sum + v, 0) /
+            avancesEntregables.length) *
+            10
+        ) / 10
+      : avanceManualProyecto;
+
   return {
     id: task.id,
     nombre: task.name,
     estado,
     prioridad: normalizePriority(task.priority && task.priority.priority),
-    avance,
+    avance: avanceCalculado,
+    avanceManual: avanceManualProyecto,
     sponsor: cfDropdownLabel(task, "Sponsor"),
     focal: cfUsers(task, "Focal"),
     semaforoLabel: semaforoLabelRaw,
@@ -167,6 +181,8 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
 }
 
 function buildEntregable(task, allTasks) {
+  const avanceManualEntregable = cfNumberPercent(task, "% Avance");
+
   const actividades = allTasks
     .filter((a) => a.parent === task.id)
     .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }))
@@ -174,12 +190,27 @@ function buildEntregable(task, allTasks) {
       id: a.id,
       nombre: a.name,
       estado: normalizeEstado(a.status && a.status.status),
-      avance: cfNumberPercent(a, "% Avance") ?? 0,
+      avance: cfNumberPercent(a, "% Avance"),
     }));
+
+  const avancesActividades = actividades
+    .map((a) => a.avance)
+    .filter((v) => typeof v === "number" && Number.isFinite(v));
+
+  const avanceCalculado =
+    avancesActividades.length > 0
+      ? Math.round(
+          (avancesActividades.reduce((sum, v) => sum + v, 0) /
+            avancesActividades.length) *
+            10
+        ) / 10
+      : avanceManualEntregable;
 
   return {
     id: task.id,
     nombre: task.name,
+    avanceCalculado,
+    avanceManual: avanceManualEntregable,
     actividades,
   };
 }
@@ -643,7 +674,7 @@ function ActivityRow({ activity }) {
             flexShrink: 0,
           }}
         >
-          {activity.avance}%
+          {activity.avance != null ? `${activity.avance}%` : "—"}
         </div>
 
         <div
@@ -657,7 +688,7 @@ function ActivityRow({ activity }) {
         >
           <div
             style={{
-              width: `${Math.max(0, Math.min(100, activity.avance || 0))}%`,
+              width: `${Math.max(0, Math.min(100, activity.avance ?? 0))}%`,
               height: "100%",
               background: A3_BLUE,
               borderRadius: 999,

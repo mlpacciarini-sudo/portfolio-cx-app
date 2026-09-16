@@ -223,18 +223,33 @@ const RESPONSIVE_CSS = `
 
     .portfolio-main,
     .project-main {
-      padding: 16px 14px 28px !important;
+      padding: 12px 12px 22px !important;
     }
 
     .kpi-grid {
-      grid-template-columns: 1fr !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
       gap: 8px !important;
-      margin-bottom: 14px !important;
+      margin-bottom: 12px !important;
     }
 
     .kpi-card {
-      min-height: 66px !important;
-      padding: 11px 13px !important;
+      min-height: 62px !important;
+      padding: 10px 12px !important;
+    }
+
+    .kpi-number {
+      font-size: 24px !important;
+      margin-bottom: 3px !important;
+    }
+
+    .kpi-label {
+      font-size: 11px !important;
+    }
+
+    .kpi-icon {
+      width: 32px !important;
+      height: 32px !important;
+      font-size: 13px !important;
     }
 
     .portfolio-cards-responsive {
@@ -243,16 +258,20 @@ const RESPONSIVE_CSS = `
     }
 
     .project-card {
-      padding: 16px !important;
+      padding: 13px !important;
     }
 
     .project-card-meta {
       grid-template-columns: 1fr 1fr !important;
-      gap: 12px !important;
+      gap: 10px !important;
     }
 
     .project-card-wide {
       grid-column: 1 / -1;
+    }
+
+    .mobile-detail-only {
+      display: none !important;
     }
 
     .portfolio-footer {
@@ -276,7 +295,7 @@ const RESPONSIVE_CSS = `
 
     .executive-summary-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 16px 10px !important;
+      gap: 12px 8px !important;
     }
 
     .deliverables-title-row {
@@ -309,6 +328,12 @@ const RESPONSIVE_CSS = `
       grid-template-columns: 1fr !important;
       gap: 10px !important;
       padding: 14px !important;
+    }
+  }
+
+  @media (max-width: 359px) {
+    .kpi-grid {
+      grid-template-columns: 1fr !important;
     }
   }
 
@@ -920,8 +945,8 @@ function ProjectCards({ projects, onOpen }) {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "flex-start",
-                gap: 12,
-                marginBottom: 14,
+                gap: 10,
+                marginBottom: 10,
               }}
             >
               <div style={{ minWidth: 0 }}>
@@ -965,8 +990,8 @@ function ProjectCards({ projects, onOpen }) {
               style={{
                 display: "flex",
                 flexWrap: "wrap",
-                gap: 8,
-                marginBottom: 16,
+                gap: 6,
+                marginBottom: 12,
               }}
             >
               <StatusPill bg={est.bg} color={est.color}>
@@ -1016,12 +1041,12 @@ function ProjectCards({ projects, onOpen }) {
                 </div>
               </div>
 
-              <div className="project-card-wide" style={{ gridColumn: "1 / -1" }}>
+              <div className="project-card-wide mobile-detail-only" style={{ gridColumn: "1 / -1" }}>
                 <div style={cardLabelStyle}>Última novedad</div>
                 <div className="mobile-clamp" title={dashIfEmpty(p.actualizacion)} style={cardValueStyle}>{dashIfEmpty(p.actualizacion)}</div>
               </div>
 
-              <div className="project-card-wide" style={{ gridColumn: "1 / -1" }}>
+              <div className="project-card-wide mobile-detail-only" style={{ gridColumn: "1 / -1" }}>
                 <div style={cardLabelStyle}>Próximo hito</div>
                 <div className="mobile-clamp" title={dashIfEmpty(p.proximoHito)} style={cardValueStyle}>{dashIfEmpty(p.proximoHito)}</div>
               </div>

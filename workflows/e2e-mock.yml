@@ -1,0 +1,46 @@
+name: QA (tests con datos simulados)
+
+# Cuándo se dispara solo, sin que nadie haga nada:
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Playwright — UI mockeada
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Trae el código del repo a la máquina virtual de GitHub
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      # 2. Instala Node.js
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # 3. Instala las dependencias del proyecto (React, Vite, Playwright...)
+      - name: Instalar dependencias
+        run: npm ci
+
+      # 4. Instala el navegador que usa Playwright para simular un usuario real
+      - name: Instalar navegador de Playwright
+        run: npx playwright install --with-deps chromium
+
+      # 5. Corre los tests de UI (los que usan datos mockeados, no ClickUp real)
+      - name: Correr tests
+        run: npm run test:e2e
+
+      # 6. Si algo falla, guarda el reporte con screenshots para poder revisarlo
+      - name: Guardar reporte si falló algo
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

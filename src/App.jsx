@@ -23,6 +23,262 @@ const GRAY_BG = "#EEF1F4";
 
 const font = "'Montserrat', Arial, sans-serif";
 
+
+const RESPONSIVE_CSS = `
+  * { box-sizing: border-box; }
+  html, body, #root { width: 100%; max-width: 100%; margin: 0; overflow-x: hidden; }
+
+  .a3-shell { width: 100%; max-width: 100%; overflow-x: hidden; }
+
+  .a3-header-inner,
+  .project-header-inner {
+    width: 100%;
+  }
+
+  .portfolio-table-desktop {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .portfolio-cards-responsive {
+    display: none;
+  }
+
+  .portfolio-table-desktop table {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .portfolio-table-desktop th,
+  .portfolio-table-desktop td {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .portfolio-table-desktop button {
+    max-width: 100%;
+  }
+
+  @media (max-width: 1399px) {
+    .portfolio-main,
+    .project-main {
+      padding-left: 20px !important;
+      padding-right: 20px !important;
+    }
+
+    .portfolio-table-desktop th,
+    .portfolio-table-desktop td {
+      padding-left: 9px !important;
+      padding-right: 9px !important;
+      font-size: 11px !important;
+    }
+
+    .portfolio-table-desktop button {
+      padding: 7px 9px !important;
+      font-size: 11px !important;
+    }
+
+    .portfolio-table-desktop .status-pill {
+      padding: 5px 7px !important;
+      font-size: 11px !important;
+    }
+  }
+
+  @media (max-width: 1099px) {
+    .portfolio-table-desktop {
+      display: none;
+    }
+
+    .portfolio-cards-responsive {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      width: 100%;
+    }
+
+    .kpi-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .project-detail-head {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    }
+
+    .project-detail-progress {
+      grid-column: 1 / -1;
+      border-left: 0 !important;
+      border-top: 1px solid #DDE3EA;
+      padding-left: 0 !important;
+      padding-top: 16px;
+    }
+
+    .executive-summary-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 16px 12px !important;
+      overflow-x: visible !important;
+    }
+
+    .activity-row,
+    .activity-header {
+      grid-template-columns: minmax(0, 1fr) 150px 190px !important;
+      gap: 12px !important;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .a3-header,
+    .project-header {
+      padding: 16px 18px !important;
+    }
+
+    .a3-header-inner,
+    .project-header-inner {
+      align-items: flex-start !important;
+      flex-direction: column !important;
+      gap: 14px !important;
+    }
+
+    .a3-brand-title {
+      width: 100%;
+      align-items: flex-start !important;
+      gap: 14px !important;
+    }
+
+    .a3-brand {
+      padding-right: 14px !important;
+      flex-shrink: 0;
+    }
+
+    .a3-page-title {
+      font-size: 21px !important;
+      line-height: 1.2 !important;
+    }
+
+    .a3-updated {
+      text-align: left !important;
+      width: 100%;
+    }
+
+    .portfolio-main,
+    .project-main {
+      padding: 16px 14px 28px !important;
+    }
+
+    .kpi-grid {
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+      margin-bottom: 16px !important;
+    }
+
+    .portfolio-cards-responsive {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .project-card {
+      padding: 16px !important;
+    }
+
+    .project-card-meta {
+      grid-template-columns: 1fr 1fr !important;
+      gap: 12px !important;
+    }
+
+    .project-card-wide {
+      grid-column: 1 / -1;
+    }
+
+    .portfolio-footer {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 10px !important;
+    }
+
+    .project-detail-head {
+      grid-template-columns: 1fr !important;
+      padding: 16px !important;
+    }
+
+    .project-detail-progress {
+      grid-column: auto;
+    }
+
+    .project-detail-title {
+      font-size: 23px !important;
+    }
+
+    .executive-summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 16px 10px !important;
+    }
+
+    .deliverables-title-row {
+      align-items: flex-start !important;
+      flex-direction: column !important;
+      gap: 6px !important;
+    }
+
+    .deliverable-button {
+      align-items: flex-start !important;
+      gap: 10px !important;
+    }
+
+    .deliverable-button-meta {
+      gap: 8px !important;
+    }
+
+    .deliverable-name {
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+    }
+
+    .activity-header {
+      display: none !important;
+    }
+
+    .activity-row {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+      padding: 14px !important;
+    }
+  }
+
+  @media (max-width: 479px) {
+    .a3-brand-title {
+      flex-direction: column !important;
+      gap: 10px !important;
+    }
+
+    .a3-brand {
+      border-right: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    .a3-page-title {
+      font-size: 20px !important;
+    }
+
+    .executive-summary-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    .project-card-meta {
+      grid-template-columns: 1fr !important;
+    }
+
+    .project-card-wide {
+      grid-column: auto;
+    }
+  }
+`;
+
+function ResponsiveStyles() {
+  return <style>{RESPONSIVE_CSS}</style>;
+}
+
 // ---------- Normalización de datos crudos de ClickUp ----------
 
 function stripAccents(s) {
@@ -257,6 +513,7 @@ function priorityStyle(p) {
 function StatusPill({ bg, color, children, dot = false }) {
   return (
     <span
+      className="status-pill"
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -384,6 +641,7 @@ function Progress({ value }) {
 function PortfolioTable({ projects, onOpen }) {
   return (
     <div
+      className="portfolio-table-desktop"
       style={{
         background: WHITE,
         border: `1px solid ${BORDER}`,
@@ -392,27 +650,27 @@ function PortfolioTable({ projects, onOpen }) {
         boxShadow: "0 6px 18px rgba(0,0,0,0.04)",
       }}
     >
-      <div style={{ overflowX: "auto" }}>
+      <div style={{ width: "100%", maxWidth: "100%" }}>
         <table
           style={{
             width: "100%",
             borderCollapse: "collapse",
-            minWidth: 1450,
+            minWidth: 0,
             tableLayout: "fixed",
           }}
         >
           <colgroup>
-            <col style={{ width: 190 }} />
-            <col style={{ width: 120 }} />
-            <col style={{ width: 120 }} />
-            <col style={{ width: 120 }} />
-            <col style={{ width: 90 }} />
-            <col style={{ width: 110 }} />
-            <col style={{ width: 120 }} />
-            <col style={{ width: 120 }} />
-            <col style={{ width: 200 }} />
-            <col style={{ width: 170 }} />
-            <col style={{ width: 120 }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "6%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "7%" }} />
           </colgroup>
 
           <thead>
@@ -559,6 +817,165 @@ function PortfolioTable({ projects, onOpen }) {
   );
 }
 
+
+function ProjectCards({ projects, onOpen }) {
+  return (
+    <div className="portfolio-cards-responsive">
+      {projects.map((p) => {
+        const est =
+          ESTADO_STYLE[p.estado] || {
+            bg: GRAY_BG,
+            color: A3_GRAY,
+            label: dashIfEmpty(p.estado),
+          };
+        const sit = getSituation(p);
+        const pri = priorityStyle(p.prioridad);
+
+        return (
+          <article
+            key={p.id}
+            className="project-card"
+            style={{
+              background: WHITE,
+              border: `1px solid ${BORDER}`,
+              borderRadius: 12,
+              padding: 18,
+              boxShadow: "0 6px 18px rgba(0,0,0,0.04)",
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    color: A3_NAVY,
+                    fontWeight: 700,
+                    fontSize: 16,
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {p.nombre}
+                </div>
+                <div style={{ color: A3_GRAY, fontSize: 11, marginTop: 4 }}>
+                  {dashIfEmpty(p.sponsor)}
+                </div>
+              </div>
+
+              <button
+                onClick={() => onOpen(p.id)}
+                style={{
+                  border: `1px solid ${A3_BLUE}`,
+                  color: A3_BLUE,
+                  background: WHITE,
+                  borderRadius: 8,
+                  padding: "8px 10px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: font,
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                Ver ficha →
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginBottom: 16,
+              }}
+            >
+              <StatusPill bg={est.bg} color={est.color}>
+                {est.label}
+              </StatusPill>
+              <StatusPill bg={sit.bg} color={sit.color} dot>
+                {sit.label}
+              </StatusPill>
+              <StatusPill bg={pri.bg} color={pri.color}>
+                {dashIfEmpty(p.prioridad)}
+              </StatusPill>
+            </div>
+
+            <div
+              className="project-card-meta"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: 14,
+              }}
+            >
+              <div>
+                <div style={cardLabelStyle}>Responsable</div>
+                <div style={cardValueStyle}>{dashIfEmpty(p.focal)}</div>
+              </div>
+
+              <div>
+                <div style={cardLabelStyle}>% Avance</div>
+                <Progress value={p.avance} />
+              </div>
+
+              <div>
+                <div style={cardLabelStyle}>Fecha objetivo</div>
+                <div style={cardValueStyle}>{dashIfEmpty(p.fechaObjetivo)}</div>
+              </div>
+
+              <div>
+                <div style={cardLabelStyle}>Nueva fecha</div>
+                <div
+                  style={{
+                    ...cardValueStyle,
+                    color: p.nuevaFechaObjetivo ? RED : TEXT,
+                    fontWeight: p.nuevaFechaObjetivo ? 700 : 600,
+                  }}
+                >
+                  {dashIfEmpty(p.nuevaFechaObjetivo)}
+                </div>
+              </div>
+
+              <div className="project-card-wide" style={{ gridColumn: "1 / -1" }}>
+                <div style={cardLabelStyle}>Última novedad</div>
+                <div style={cardValueStyle}>{dashIfEmpty(p.actualizacion)}</div>
+              </div>
+
+              <div className="project-card-wide" style={{ gridColumn: "1 / -1" }}>
+                <div style={cardLabelStyle}>Próximo hito</div>
+                <div style={cardValueStyle}>{dashIfEmpty(p.proximoHito)}</div>
+              </div>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+const cardLabelStyle = {
+  color: A3_GRAY,
+  fontSize: 11,
+  fontWeight: 600,
+  marginBottom: 5,
+};
+
+const cardValueStyle = {
+  color: TEXT,
+  fontSize: 13,
+  lineHeight: 1.45,
+  fontWeight: 600,
+  overflowWrap: "anywhere",
+};
+
 const tdStyle = {
   padding: "14px",
   fontSize: 12,
@@ -646,6 +1063,7 @@ function ActivityRow({ activity }) {
 
   return (
     <div
+      className="activity-row"
       style={{
         display: "grid",
         gridTemplateColumns: "minmax(260px, 1fr) 180px 250px",
@@ -715,6 +1133,7 @@ function Deliverable({ entregable, number, initialOpen = false }) {
       }}
     >
       <button
+        className="deliverable-button"
         onClick={() => setOpen((v) => !v)}
         style={{
           width: "100%",
@@ -748,6 +1167,7 @@ function Deliverable({ entregable, number, initialOpen = false }) {
           </div>
 
           <div
+            className="deliverable-name"
             style={{
               color: A3_NAVY,
               fontSize: 14,
@@ -761,7 +1181,7 @@ function Deliverable({ entregable, number, initialOpen = false }) {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+        <div className="deliverable-button-meta" style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
           <span
             style={{
               background: BLUE_BG,
@@ -780,6 +1200,7 @@ function Deliverable({ entregable, number, initialOpen = false }) {
       {open && (
         <div>
           <div
+            className="activity-header"
             style={{
               display: "grid",
               gridTemplateColumns: "minmax(260px, 1fr) 180px 250px",
@@ -814,6 +1235,7 @@ function Deliverable({ entregable, number, initialOpen = false }) {
 function ProjectHeader() {
   return (
     <header
+      className="project-header"
       style={{
         background: A3_NAVY,
         color: WHITE,
@@ -821,6 +1243,7 @@ function ProjectHeader() {
       }}
     >
       <div
+        className="project-header-inner"
         style={{
           maxWidth: 1500,
           margin: "0 auto",
@@ -830,8 +1253,9 @@ function ProjectHeader() {
           gap: 20,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+        <div className="a3-brand-title" style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <div
+            className="a3-brand"
             style={{
               display: "flex",
               alignItems: "center",
@@ -854,6 +1278,7 @@ function ProjectHeader() {
           </div>
 
           <div
+            className="a3-page-title"
             style={{
               fontSize: 28,
               fontWeight: 700,
@@ -880,6 +1305,7 @@ function ProjectDetail({ project, onBack }) {
 
   return (
     <div
+      className="a3-shell"
       style={{
         minHeight: "100vh",
         background: "#F7F9FB",
@@ -887,9 +1313,11 @@ function ProjectDetail({ project, onBack }) {
         color: TEXT,
       }}
     >
+      <ResponsiveStyles />
       <ProjectHeader />
 
       <main
+        className="project-main"
         style={{
           maxWidth: 1500,
           margin: "0 auto",
@@ -915,6 +1343,7 @@ function ProjectDetail({ project, onBack }) {
 
         {/* Cabecera del proyecto */}
         <section
+          className="project-detail-head"
           style={{
             background: WHITE,
             border: `1px solid ${BORDER}`,
@@ -928,6 +1357,7 @@ function ProjectDetail({ project, onBack }) {
           }}
         >
           <h1
+            className="project-detail-title"
             style={{
               margin: 0,
               color: A3_NAVY,
@@ -956,6 +1386,7 @@ function ProjectDetail({ project, onBack }) {
           </div>
 
           <div
+            className="project-detail-progress"
             style={{
               borderLeft: `1px solid ${BORDER}`,
               paddingLeft: 22,
@@ -1022,6 +1453,7 @@ function ProjectDetail({ project, onBack }) {
           </div>
 
           <div
+            className="executive-summary-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(7, minmax(150px, 1fr))",
@@ -1070,6 +1502,7 @@ function ProjectDetail({ project, onBack }) {
           }}
         >
           <div
+            className="deliverables-title-row"
             style={{
               display: "flex",
               justifyContent: "space-between",
@@ -1232,6 +1665,7 @@ export default function PortfolioCX() {
 
   return (
     <div
+      className="a3-shell"
       style={{
         minHeight: "100vh",
         background: "#F7F9FB",
@@ -1239,7 +1673,9 @@ export default function PortfolioCX() {
         color: TEXT,
       }}
     >
+      <ResponsiveStyles />
       <header
+        className="a3-header"
         style={{
           background: A3_NAVY,
           color: WHITE,
@@ -1247,6 +1683,7 @@ export default function PortfolioCX() {
         }}
       >
         <div
+          className="a3-header-inner"
           style={{
             maxWidth: 1500,
             margin: "0 auto",
@@ -1256,8 +1693,9 @@ export default function PortfolioCX() {
             gap: 20,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+          <div className="a3-brand-title" style={{ display: "flex", alignItems: "center", gap: 24 }}>
             <div
+              className="a3-brand"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1280,6 +1718,7 @@ export default function PortfolioCX() {
             </div>
 
             <h1
+              className="a3-page-title"
               style={{
                 margin: 0,
                 fontSize: 28,
@@ -1291,6 +1730,7 @@ export default function PortfolioCX() {
           </div>
 
           <div
+            className="a3-updated"
             style={{
               textAlign: "right",
               fontSize: 12,
@@ -1304,8 +1744,9 @@ export default function PortfolioCX() {
         </div>
       </header>
 
-      <main style={{ maxWidth: 1500, margin: "0 auto", padding: "24px 30px 34px" }}>
+      <main className="portfolio-main" style={{ maxWidth: 1500, margin: "0 auto", padding: "24px 30px 34px" }}>
         <div
+          className="kpi-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
@@ -1320,8 +1761,10 @@ export default function PortfolioCX() {
         </div>
 
         <PortfolioTable projects={projects} onOpen={setView} />
+        <ProjectCards projects={projects} onOpen={setView} />
 
         <div
+          className="portfolio-footer"
           style={{
             display: "flex",
             justifyContent: "space-between",

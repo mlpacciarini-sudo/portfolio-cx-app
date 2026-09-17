@@ -12,7 +12,9 @@ function walk(dir) {
     if (
       entry.name === "node_modules" ||
       entry.name === ".git" ||
-      entry.name === "dist"
+      entry.name === "dist" ||
+      entry.name === "playwright-report" ||
+      entry.name === "test-results"
     ) {
       return [];
     }
@@ -31,7 +33,7 @@ test("no hay secretos hardcodeados en el repositorio", () => {
   const forbiddenPatterns = [
     /pk_[A-Za-z0-9_-]{10,}/g,
     /CLICKUP_API_TOKEN\s*=\s*.+/g,
-    /Authorization\s*:\s*["'`].+["'`]/g,
+    /Authorization\s*:\s*["'`][^"'`]+["'`]/g,
   ];
 
   const findings = [];
@@ -63,7 +65,7 @@ test("no hay secretos hardcodeados en el repositorio", () => {
 
       if (matches) {
         findings.push({
-          file,
+          file: path.relative(ROOT, file),
           matches,
         });
       }
@@ -73,21 +75,64 @@ test("no hay secretos hardcodeados en el repositorio", () => {
   assert.equal(
     findings.length,
     0,
-    `Se encontraron posibles secretos:\n${JSON.stringify(findings, null, 2)}`
+    `Se encontraron posibles secretos hardcodeados:\n${JSON.stringify(
+      findings,
+      null,
+      2
+    )}`
   );
 });
 
-test("no hay archivos .env versionados", () => {
+test("no hay archivos .env reales versionados", () => {
   const files = walk(ROOT);
 
   const envFiles = files.filter((file) => {
     const name = path.basename(file);
-    return name === ".env" || name.startsWith(".env.");
+
+    return (
+      name === ".env" ||
+      (name.startsWith(".env.") && name !== ".env.example")
+    );
   });
 
   assert.equal(
     envFiles.length,
     0,
-    `Se encontraron archivos .env en el repo:\n${envFiles.join("\n")}`
+    `Se encontraron archivos .env que no deberían estar versionados:\n${envFiles
+      .map((file) => path.relative(ROOT, file))
+      .join("\n")}`
+  );
+});
+
+test(".env.example no contiene secretos reales", () => {
+  const examplePath = path.join(ROOT, ".env.example");
+
+  if (!fs.existsSync(examplePath)) {
+    return;
+  }
+
+  const content = fs.readFileSync(examplePath, "utf8");
+
+  const suspiciousPatterns = [
+    /pk_[A-Za-z0-9_-]{10,}/g,
+    /CLICKUP_API_TOKEN\s*=\s*(?!YOUR_|EXAMPLE_|PLACEHOLDER|$).+/g,
+  ];
+
+  const findings = [];
+
+  for (const pattern of suspiciousPatterns) {
+    const matches = content.match(pattern);
+
+    if (matches) {
+      findings.push(...matches);
+    }
+  }
+
+  assert.equal(
+    findings.length,
+    0,
+    `El archivo .env.example parece contener un secreto real:\n${findings.join(
+      "\n"
+    )}`
   );
 });

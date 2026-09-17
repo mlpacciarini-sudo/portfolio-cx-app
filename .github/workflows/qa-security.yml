@@ -1,1 +1,24 @@
+name: QA seguridad dashboard
 
+on:
+  push:
+    branches: [main, principal]
+  pull_request:
+    branches: [main, principal]
+  workflow_dispatch:
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Ejecutar QA de seguridad
+        run: node --test tests/security.test.mjs

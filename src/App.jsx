@@ -388,6 +388,56 @@ function normalizeEstado(rawStatus) {
   return (rawStatus || "").toUpperCase() || null;
 }
 
+function estadoDesdeHijos(hijos, estadoActual) {
+  if (!hijos.length) return estadoActual;
+  if (hijos.every((h) => h.estado === "FINALIZADO")) return "FINALIZADO";
+  if (estadoActual === "EN PAUSA") return "EN PAUSA";
+  if (hijos.every((h) => h.estado === "NO INICIADO")) {
+    return ["EN PREPARACIÓN", "EN ANÁLISIS"].includes(estadoActual)
+      ? estadoActual
+      : "NO INICIADO";
+  }
+  if (
+    hijos.some((h) => h.estado === "EN PAUSA") &&
+    hijos.every((h) => ["NO INICIADO", "EN PAUSA", "FINALIZADO"].includes(h.estado))
+  ) return "EN PAUSA";
+  return "EN EJECUCIÓN";
+}
+
+function avanceDesdeEstado(estado, avanceManual) {
+  if (estado === "FINALIZADO") return 100;
+  if (estado === "NO INICIADO") return 0;
+  return typeof avanceManual === "number" && avanceManual >= 0 && avanceManual <= 100
+    ? avanceManual
+    : null;
+}
+
+function promedioAvances(hijos) {
+  if (!hijos.length || hijos.some((n) => typeof n !== "number" || !Number.isFinite(n))) return null;
+  return Math.round((hijos.reduce((sum, n) => sum + n, 0) / hijos.length) * 10) / 10;
+}
+
+function nombreEstado(estado) {
+  return ESTADO_STYLE[estado]?.label || estado || "Sin estado";
+}
+
+function alertasDeAvance(nombre, estado, manual, calculado, tieneHijos) {
+  const alertas = [];
+  if (manual !== null && (manual < 0 || manual > 100)) {
+    alertas.push(`${nombre}: el % Avance en ClickUp está fuera de 0–100.`);
+  } else if (estado === "NO INICIADO" && manual !== null && manual !== 0) {
+    alertas.push(`${nombre}: figura No iniciado, pero tiene ${manual}% cargado en ClickUp.`);
+  } else if (estado === "FINALIZADO" && manual !== null && manual !== 100) {
+    alertas.push(`${nombre}: figura Finalizado, pero tiene ${manual}% cargado en ClickUp.`);
+  } else if (!tieneHijos && !["NO INICIADO", "FINALIZADO"].includes(estado) && manual === null) {
+    alertas.push(`${nombre}: falta cargar % Avance en ClickUp.`);
+  }
+  if (tieneHijos && manual !== null && calculado !== null && Math.abs(manual - calculado) > 0.1) {
+    alertas.push(`${nombre}: ClickUp indica ${manual}% y las actividades calculan ${calculado}%.`);
+  }
+  return alertas;
+}
+
 
 function findCustomField(task, name) {
   if (!task || !Array.isArray(task.custom_fields)) return undefined;
@@ -463,7 +513,7 @@ function dashIfEmpty(v) {
 // ---------- Transformación ClickUp -> UI ----------
 
 function buildProjectFromTask(task, entregablesRaw, allTasks) {
-  const estado = normalizeEstado(task.status && task.status.status);
+  const estadoClickUp = normalizeEstado(task.status && task.status.status);
   const avanceManualProyecto = cfNumberPercent(task, "% Avance");
 
   const semaforoLabelRaw =
@@ -479,18 +529,24 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
     .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }))
     .map((e) => buildEntregable(e, allTasks));
 
-  const avancesEntregables = entregables
-    .map((e) => e.avanceCalculado)
-    .filter((v) => typeof v === "number" && Number.isFinite(v));
+  const estado = estadoDesdeHijos(entregables, estadoClickUp);
+
+  const avancesEntregables = entregables.map((e) => e.avanceCalculado);
 
   const avanceCalculado =
     avancesEntregables.length > 0
-      ? Math.round(
-          (avancesEntregables.reduce((sum, v) => sum + v, 0) /
-            avancesEntregables.length) *
-            10
-        ) / 10
-      : avanceManualProyecto;
+      ? promedioAvances(avancesEntregables)
+      : avanceDesdeEstado(estado, avanceManualProyecto);
+
+  const alertasClickUp = [];
+  if (estadoClickUp !== estado) {
+    alertasClickUp.push(`Proyecto: en ClickUp figura ${nombreEstado(estadoClickUp)}; según sus entregables corresponde ${nombreEstado(estado)}.`);
+  }
+  if (semaforoKey?.includes("en fecha") && getSituation({ estado, estrategico: cfDropdownLabel(task, "Estratégico"), semaforoKey, fechaObjetivo: cfDate(task, "Fecha objetivo"), nuevaFechaObjetivo: cfDate(task, "Nueva fecha objetivo") }).detail?.includes("vencido")) {
+    alertasClickUp.push("Proyecto: el semáforo en ClickUp dice En fecha, pero la fecha objetivo vigente ya venció.");
+  }
+  alertasClickUp.push(...alertasDeAvance("Proyecto", estadoClickUp, avanceManualProyecto, avanceCalculado, entregables.length > 0));
+  entregables.forEach((e) => alertasClickUp.push(...e.alertasClickUp));
 
   return {
     id: task.id,
@@ -499,6 +555,7 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
     estrategico: cfDropdownLabel(task, "Estratégico") || "Sin definir",
     avance: avanceCalculado,
     avanceManual: avanceManualProyecto,
+    alertasClickUp,
     sponsor: cfDropdownLabel(task, "Sponsor"),
     focal: cfUsers(task, "Focal"),
     semaforoLabel: semaforoLabelRaw,
@@ -520,6 +577,7 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
 }
 
 function buildEntregable(task, allTasks) {
+  const estadoClickUp = normalizeEstado(task.status && task.status.status);
   const avanceManualEntregable = cfNumberPercent(task, "% Avance");
 
   const actividades = allTasks
@@ -529,27 +587,41 @@ function buildEntregable(task, allTasks) {
       id: a.id,
       nombre: a.name,
       estado: normalizeEstado(a.status && a.status.status),
-      avance: cfNumberPercent(a, "% Avance"),
+      avanceManual: cfNumberPercent(a, "% Avance"),
+      avance: avanceDesdeEstado(
+        normalizeEstado(a.status && a.status.status),
+        cfNumberPercent(a, "% Avance")
+      ),
     }));
 
-  const avancesActividades = actividades
-    .map((a) => a.avance)
-    .filter((v) => typeof v === "number" && Number.isFinite(v));
+  const estado = estadoDesdeHijos(
+    actividades,
+    estadoClickUp
+  );
+
+  const avancesActividades = actividades.map((a) => a.avance);
 
   const avanceCalculado =
     avancesActividades.length > 0
-      ? Math.round(
-          (avancesActividades.reduce((sum, v) => sum + v, 0) /
-            avancesActividades.length) *
-            10
-        ) / 10
-      : avanceManualEntregable;
+      ? promedioAvances(avancesActividades)
+      : avanceDesdeEstado(estado, avanceManualEntregable);
+
+  const alertasClickUp = [];
+  if (estadoClickUp !== estado) {
+    alertasClickUp.push(`Entregable ${task.name}: en ClickUp figura ${nombreEstado(estadoClickUp)}; según sus actividades corresponde ${nombreEstado(estado)}.`);
+  }
+  alertasClickUp.push(...alertasDeAvance(`Entregable ${task.name}`, estadoClickUp, avanceManualEntregable, avanceCalculado, actividades.length > 0));
+  actividades.forEach((a) => {
+    alertasClickUp.push(...alertasDeAvance(`Actividad ${a.nombre}`, a.estado, a.avanceManual, a.avance, false));
+  });
 
   return {
     id: task.id,
     nombre: task.name,
+    estado,
     avanceCalculado,
     avanceManual: avanceManualEntregable,
+    alertasClickUp,
     actividades,
   };
 }
@@ -568,13 +640,36 @@ const ESTADO_STYLE = {
 
 function getSituation(project) {
   const k = stripAccents((project.semaforoKey || "").toLowerCase());
+  const target = project.nuevaFechaObjetivo || project.fechaObjetivo;
+  const parts = target && /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(target);
+  const dueDate = parts
+    ? new Date(Number(parts[3]), Number(parts[2]) - 1, Number(parts[1]))
+    : null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const overdue =
+    project.estado !== "FINALIZADO" &&
+    dueDate &&
+    dueDate.getDate() === Number(parts[1]) &&
+    dueDate.getMonth() === Number(parts[2]) - 1 &&
+    dueDate.getFullYear() === Number(parts[3]) &&
+    dueDate < today;
+  const strategic = stripAccents(String(project.estrategico || "").toLowerCase()) === "si";
 
   if (k.includes("critico")) {
-    return { label: "Crítico", color: RED, bg: RED_BG };
+    return { label: "Crítico", color: RED, bg: RED_BG, detail: overdue ? "Plazo vencido" : null };
+  }
+
+  if (overdue && strategic) {
+    return { label: "Crítico", color: RED, bg: RED_BG, detail: "Estratégico · plazo vencido" };
   }
 
   if (k.includes("con desvio") || k.includes("en riesgo") || k.includes("atencion")) {
-    return { label: "En atención", color: YELLOW, bg: YELLOW_BG };
+    return { label: "En atención", color: YELLOW, bg: YELLOW_BG, detail: overdue ? "Plazo vencido" : null };
+  }
+
+  if (overdue) {
+    return { label: "En atención", color: YELLOW, bg: YELLOW_BG, detail: "Plazo vencido" };
   }
 
   if (k.includes("en fecha")) {
@@ -830,6 +925,11 @@ function PortfolioTable({ projects, onOpen }) {
                     >
                       {dashIfEmpty(p.sponsor)}
                     </div>
+                    {p.alertasClickUp.length > 0 && (
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#9A5700", marginTop: 5 }}>
+                        ⚠ Revisar ClickUp ({p.alertasClickUp.length})
+                      </div>
+                    )}
                   </td>
 
                   <td style={tdStyle}>{dashIfEmpty(p.focal)}</td>
@@ -844,6 +944,7 @@ function PortfolioTable({ projects, onOpen }) {
                     <StatusPill bg={sit.bg} color={sit.color} dot>
                       {sit.label}
                     </StatusPill>
+                    {sit.detail && <div style={{ fontSize: 11, color: sit.color, marginTop: 4 }}>{sit.detail}</div>}
                   </td>
 
                   <td style={tdStyle}>
@@ -955,6 +1056,11 @@ function ProjectCards({ projects, onOpen }) {
                 <div style={{ color: A3_GRAY, fontSize: 11, marginTop: 4 }}>
                   {dashIfEmpty(p.sponsor)}
                 </div>
+                {p.alertasClickUp.length > 0 && (
+                  <div style={{ color: "#9A5700", fontSize: 11, fontWeight: 700, marginTop: 5 }}>
+                    ⚠ Revisar ClickUp ({p.alertasClickUp.length})
+                  </div>
+                )}
               </div>
 
               <button
@@ -992,6 +1098,7 @@ function ProjectCards({ projects, onOpen }) {
               <StatusPill bg={sit.bg} color={sit.color} dot>
                 {sit.label}
               </StatusPill>
+              {sit.detail && <span style={{ color: sit.color, fontSize: 11, alignSelf: "center" }}>{sit.detail}</span>}
               <StatusPill bg={strategic.bg} color={strategic.color}>
                 {dashIfEmpty(p.estrategico)}
               </StatusPill>
@@ -1467,6 +1574,7 @@ function ProjectDetail({ project, onBack }) {
             <StatusPill bg={sit.bg} color={sit.color}>
               Situación: {sit.label}
             </StatusPill>
+            {sit.detail && <span style={{ color: sit.color, fontSize: 12, alignSelf: "center" }}>{sit.detail}</span>}
 
             <StatusPill bg={strategic.bg} color={strategic.color}>
               Estratégico: {project.estrategico}
@@ -1517,6 +1625,15 @@ function ProjectDetail({ project, onBack }) {
             </div>
           </div>
         </section>
+
+        {project.alertasClickUp.length > 0 && (
+          <section aria-label="Revisar ClickUp" style={{ background: YELLOW_BG, border: `1px solid ${YELLOW}`, borderRadius: 10, marginTop: 12, padding: "14px 18px", color: TEXT }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>⚠ Revisar ClickUp</div>
+            <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.5 }}>
+              {project.alertasClickUp.map((alerta, i) => <li key={i}>{alerta}</li>)}
+            </ul>
+          </section>
+        )}
 
         {/* Resumen ejecutivo */}
         <section

@@ -423,17 +423,18 @@ function nombreEstado(estado) {
 
 function alertasDeAvance(nombre, estado, manual, calculado, tieneHijos) {
   const alertas = [];
+  const diferencia = tieneHijos && manual !== null && calculado !== null && Math.abs(manual - calculado) > 0.1;
+  const origen = nombre === "Proyecto" ? "entregables" : "actividades";
   if (manual !== null && (manual < 0 || manual > 100)) {
     alertas.push(`${nombre}: el % Avance en ClickUp está fuera de 0–100.`);
   } else if (estado === "NO INICIADO" && manual !== null && manual !== 0) {
-    alertas.push(`${nombre}: figura No iniciado, pero tiene ${manual}% cargado en ClickUp.`);
+    alertas.push(`${nombre}: figura No iniciado y ClickUp indica ${manual}%${diferencia ? `; sus ${origen} calculan ${calculado}%` : ""}.`);
   } else if (estado === "FINALIZADO" && manual !== null && manual !== 100) {
-    alertas.push(`${nombre}: figura Finalizado, pero tiene ${manual}% cargado en ClickUp.`);
+    alertas.push(`${nombre}: figura Finalizado y ClickUp indica ${manual}%${diferencia ? `; sus ${origen} calculan ${calculado}%` : ""}.`);
   } else if (!tieneHijos && !["NO INICIADO", "FINALIZADO"].includes(estado) && manual === null) {
     alertas.push(`${nombre}: falta cargar % Avance en ClickUp.`);
-  }
-  if (tieneHijos && manual !== null && calculado !== null && Math.abs(manual - calculado) > 0.1) {
-    alertas.push(`${nombre}: ClickUp indica ${manual}% y las actividades calculan ${calculado}%.`);
+  } else if (diferencia) {
+    alertas.push(`${nombre}: ClickUp indica ${manual}% y sus ${origen} calculan ${calculado}%.`);
   }
   return alertas;
 }

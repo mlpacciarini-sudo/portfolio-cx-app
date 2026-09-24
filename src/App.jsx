@@ -388,14 +388,6 @@ function normalizeEstado(rawStatus) {
   return (rawStatus || "").toUpperCase() || null;
 }
 
-function normalizePriority(rawPriority) {
-  if (!rawPriority) return "—";
-  const p = rawPriority.toLowerCase();
-  if (p === "urgent" || p === "high") return "Alta";
-  if (p === "normal") return "Media";
-  if (p === "low") return "Baja";
-  return "—";
-}
 
 function findCustomField(task, name) {
   if (!task || !Array.isArray(task.custom_fields)) return undefined;
@@ -504,7 +496,7 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
     id: task.id,
     nombre: task.name,
     estado,
-    prioridad: normalizePriority(task.priority && task.priority.priority),
+    estrategico: cfDropdownLabel(task, "Estratégico") || "Sin definir",
     avance: avanceCalculado,
     avanceManual: avanceManualProyecto,
     sponsor: cfDropdownLabel(task, "Sponsor"),
@@ -592,10 +584,10 @@ function getSituation(project) {
   return { label: "—", color: A3_GRAY, bg: GRAY_BG };
 }
 
-function priorityStyle(p) {
-  if (p === "Alta") return { color: RED, bg: RED_BG };
-  if (p === "Media") return { color: A3_BLUE, bg: BLUE_BG };
-  if (p === "Baja") return { color: TEXT, bg: GRAY_BG };
+function strategicStyle(value) {
+  const normalized = stripAccents(String(value || "").toLowerCase());
+  if (normalized === "si") return { color: A3_BLUE, bg: BLUE_BG };
+  if (normalized === "no") return { color: TEXT, bg: GRAY_BG };
   return { color: A3_GRAY, bg: GRAY_BG };
 }
 
@@ -776,7 +768,7 @@ function PortfolioTable({ projects, onOpen }) {
                 "Responsable",
                 "Estado",
                 "Situación",
-                "Prioridad",
+                "Estratégico",
                 "% Avance",
                 "Fecha objetivo",
                 "Nueva fecha",
@@ -811,7 +803,7 @@ function PortfolioTable({ projects, onOpen }) {
                 };
 
               const sit = getSituation(p);
-              const pri = priorityStyle(p.prioridad);
+              const strategic = strategicStyle(p.estrategico);
 
               return (
                 <tr
@@ -855,8 +847,8 @@ function PortfolioTable({ projects, onOpen }) {
                   </td>
 
                   <td style={tdStyle}>
-                    <StatusPill bg={pri.bg} color={pri.color}>
-                      {dashIfEmpty(p.prioridad)}
+                    <StatusPill bg={strategic.bg} color={strategic.color}>
+                      {dashIfEmpty(p.estrategico)}
                     </StatusPill>
                   </td>
 
@@ -925,7 +917,7 @@ function ProjectCards({ projects, onOpen }) {
             label: dashIfEmpty(p.estado),
           };
         const sit = getSituation(p);
-        const pri = priorityStyle(p.prioridad);
+        const strategic = strategicStyle(p.estrategico);
 
         return (
           <article
@@ -1000,8 +992,8 @@ function ProjectCards({ projects, onOpen }) {
               <StatusPill bg={sit.bg} color={sit.color} dot>
                 {sit.label}
               </StatusPill>
-              <StatusPill bg={pri.bg} color={pri.color}>
-                {dashIfEmpty(p.prioridad)}
+              <StatusPill bg={strategic.bg} color={strategic.color}>
+                {dashIfEmpty(p.estrategico)}
               </StatusPill>
             </div>
 
@@ -1398,7 +1390,7 @@ function ProjectDetail({ project, onBack }) {
     };
 
   const sit = getSituation(project);
-  const pri = priorityStyle(project.prioridad);
+  const strategic = strategicStyle(project.estrategico);
 
   return (
     <div
@@ -1476,11 +1468,9 @@ function ProjectDetail({ project, onBack }) {
               Situación: {sit.label}
             </StatusPill>
 
-            {project.prioridad !== "—" && (
-              <StatusPill bg={pri.bg} color={pri.color}>
-                Prioridad: {project.prioridad}
-              </StatusPill>
-            )}
+            <StatusPill bg={strategic.bg} color={strategic.color}>
+              Estratégico: {project.estrategico}
+            </StatusPill>
           </div>
 
           <div

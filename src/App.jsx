@@ -517,14 +517,6 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
   const estadoClickUp = normalizeEstado(task.status && task.status.status);
   const avanceManualProyecto = cfNumberPercent(task, "% Avance");
 
-  const semaforoLabelRaw =
-    cfDropdownLabel(task, "Semaforo ejecutivo") ||
-    cfDropdownLabel(task, "Semáforo ejecutivo");
-
-  const semaforoKey = semaforoLabelRaw
-    ? stripAccents(semaforoLabelRaw.toLowerCase())
-    : null;
-
   const entregables = entregablesRaw
     .filter((e) => e.parent === task.id)
     .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }))
@@ -543,10 +535,12 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
   if (estadoClickUp !== estado) {
     alertasClickUp.push(`Proyecto: en ClickUp figura ${nombreEstado(estadoClickUp)}; según sus entregables corresponde ${nombreEstado(estado)}.`);
   }
-  if (semaforoKey?.includes("en fecha") && getSituation({ estado, estrategico: cfDropdownLabel(task, "Estratégico"), semaforoKey, fechaObjetivo: cfDate(task, "Fecha objetivo"), nuevaFechaObjetivo: cfDate(task, "Nueva fecha objetivo") }).detail?.includes("vencido")) {
-    alertasClickUp.push("Proyecto: el semáforo en ClickUp dice En fecha, pero la fecha objetivo vigente ya venció.");
+  if (estado !== "FINALIZADO" && !cfDate(task, "Nueva fecha objetivo") && !cfDate(task, "Fecha objetivo")) {
+    alertasClickUp.push("Proyecto: falta cargar una fecha objetivo en ClickUp.");
   }
-  alertasClickUp.push(...alertasDeAvance("Proyecto", estadoClickUp, avanceManualProyecto, avanceCalculado, entregables.length > 0));
+  if (entregables.length === 0) {
+    alertasClickUp.push(...alertasDeAvance("Proyecto", estadoClickUp, avanceManualProyecto, avanceCalculado, false));
+  }
   entregables.forEach((e) => alertasClickUp.push(...e.alertasClickUp));
 
   return {
@@ -559,8 +553,6 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
     alertasClickUp,
     sponsor: cfDropdownLabel(task, "Sponsor"),
     focal: cfUsers(task, "Focal"),
-    semaforoLabel: semaforoLabelRaw,
-    semaforoKey,
     fechaInicio: formatDate(task.start_date),
     fechaObjetivo: cfDate(task, "Fecha objetivo"),
     nuevaFechaObjetivo: cfDate(task, "Nueva fecha objetivo"),
@@ -611,7 +603,9 @@ function buildEntregable(task, allTasks) {
   if (estadoClickUp !== estado) {
     alertasClickUp.push(`Entregable ${task.name}: en ClickUp figura ${nombreEstado(estadoClickUp)}; según sus actividades corresponde ${nombreEstado(estado)}.`);
   }
-  alertasClickUp.push(...alertasDeAvance(`Entregable ${task.name}`, estadoClickUp, avanceManualEntregable, avanceCalculado, actividades.length > 0));
+  if (actividades.length === 0) {
+    alertasClickUp.push(...alertasDeAvance(`Entregable ${task.name}`, estadoClickUp, avanceManualEntregable, avanceCalculado, false));
+  }
   actividades.forEach((a) => {
     alertasClickUp.push(...alertasDeAvance(`Actividad ${a.nombre}`, a.estado, a.avanceManual, a.avance, false));
   });
@@ -640,7 +634,6 @@ const ESTADO_STYLE = {
 };
 
 function getSituation(project) {
-  const k = stripAccents((project.semaforoKey || "").toLowerCase());
   const target = project.nuevaFechaObjetivo || project.fechaObjetivo;
   const parts = target && /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(target);
   const dueDate = parts
@@ -648,36 +641,31 @@ function getSituation(project) {
     : null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const overdue =
-    project.estado !== "FINALIZADO" &&
+  const validDate = Boolean(
     dueDate &&
     dueDate.getDate() === Number(parts[1]) &&
     dueDate.getMonth() === Number(parts[2]) - 1 &&
-    dueDate.getFullYear() === Number(parts[3]) &&
-    dueDate < today;
+    dueDate.getFullYear() === Number(parts[3])
+  );
   const strategic = stripAccents(String(project.estrategico || "").toLowerCase()) === "si";
 
-  if (k.includes("critico")) {
-    return { label: "Crítico", color: RED, bg: RED_BG, detail: overdue ? "Plazo vencido" : null };
+  if (project.estado === "FINALIZADO") {
+    return { label: "Finalizado", color: GREEN, bg: GREEN_BG };
   }
 
-  if (overdue && strategic) {
+  if (!validDate) {
+    return { label: "En atención", color: YELLOW, bg: YELLOW_BG, detail: "Sin fecha objetivo" };
+  }
+
+  if (dueDate < today && strategic) {
     return { label: "Crítico", color: RED, bg: RED_BG, detail: "Estratégico · plazo vencido" };
   }
 
-  if (k.includes("con desvio") || k.includes("en riesgo") || k.includes("atencion")) {
-    return { label: "En atención", color: YELLOW, bg: YELLOW_BG, detail: overdue ? "Plazo vencido" : null };
-  }
-
-  if (overdue) {
+  if (dueDate < today) {
     return { label: "En atención", color: YELLOW, bg: YELLOW_BG, detail: "Plazo vencido" };
   }
 
-  if (k.includes("en fecha")) {
-    return { label: "En fecha", color: GREEN, bg: GREEN_BG };
-  }
-
-  return { label: "—", color: A3_GRAY, bg: GRAY_BG };
+  return { label: "En fecha", color: GREEN, bg: GREEN_BG };
 }
 
 function strategicStyle(value) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 const API_URL = "https://clickup-proxy-api-ten.vercel.app/api/clickup";
 
@@ -76,6 +76,19 @@ const RESPONSIVE_CSS = `
   .a3-shell button:focus-visible {
     outline: 3px solid rgba(0, 120, 255, 0.32);
     outline-offset: 2px;
+  }
+
+  .portfolio-table-desktop tbody tr.fila-proyecto:hover td {
+    background: #EAF3FF !important;
+  }
+
+  .kpi-card {
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+
+  .kpi-card[role="button"]:hover {
+    box-shadow: 0 6px 16px rgba(0, 22, 69, 0.1) !important;
+    transform: translateY(-1px);
   }
 
   .kpi-card {
@@ -741,6 +754,7 @@ function KpiCard({ value, label, tone = "blue", icon, onClick, active }) {
         cursor: onClick ? "pointer" : "default",
         background: active ? c.bg : WHITE,
         border: `1px solid ${active ? c.fg : BORDER}`,
+        borderLeft: `4px solid ${c.fg}`,
         borderRadius: 10,
         padding: "13px 16px",
         boxShadow: "0 4px 12px rgba(0,0,0,0.035)",
@@ -825,7 +839,32 @@ function Progress({ value }) {
   );
 }
 
+function fechaAMs(txt) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(txt || "");
+  return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : Infinity;
+}
+
+function iniciales(nombre) {
+  const partes = String(nombre || "").trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return "?";
+  return (partes[0][0] + (partes[1] ? partes[1][0] : "")).toUpperCase();
+}
+
 function PortfolioTable({ projects, onOpen }) {
+  const th = {
+    textAlign: "left",
+    padding: "12px 14px",
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+    color: A3_GRAY,
+    borderBottom: `1px solid ${BORDER}`,
+    background: WHITE,
+  };
+  const td = { padding: "14px", fontSize: 12, color: TEXT, borderBottom: `1px solid ${BORDER}`, verticalAlign: "middle" };
+  const primerFinalizado = projects.findIndex((p) => p.estado === "FINALIZADO");
+
   return (
     <div
       className="portfolio-table-desktop"
@@ -837,179 +876,100 @@ function PortfolioTable({ projects, onOpen }) {
         boxShadow: "0 6px 18px rgba(0,0,0,0.04)",
       }}
     >
-      <div style={{ width: "100%", maxWidth: "100%" }}>
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            minWidth: 0,
-            tableLayout: "fixed",
-          }}
-        >
-          <colgroup>
-            <col style={{ width: "14%" }} />
-            <col style={{ width: "9%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "6%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "13%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: "7%" }} />
-          </colgroup>
-
-          <thead>
-            <tr style={{ background: "#F4F6F8" }}>
-              {[
-                "Proyecto",
-                "Responsable",
-                "Estado",
-                "Situación",
-                "Estratégico",
-                "% Avance",
-                "Fecha objetivo",
-                "Nueva fecha",
-                "Última novedad",
-                "Próximo hito",
-                "Acciones",
-              ].map((h) => (
-                <th
-                  key={h}
-                  style={{
-                    textAlign: "left",
-                    padding: "14px 14px",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: A3_NAVY,
-                    borderBottom: `1px solid ${BORDER}`,
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {projects.map((p, idx) => {
-              const est =
-                ESTADO_STYLE[p.estado] || {
-                  bg: GRAY_BG,
-                  color: A3_GRAY,
-                  label: dashIfEmpty(p.estado),
-                };
-
-              const sit = getSituation(p);
-              const strategic = strategicStyle(p.estrategico);
-
-              return (
-                <tr
-                  key={p.id}
-                  style={{
-                    background: idx % 2 === 0 ? WHITE : ROW_ALT,
-                  }}
-                >
-                  <td style={tdStyle}>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        color: A3_NAVY,
-                        marginBottom: 4,
-                      }}
-                    >
+      <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "26%" }} />
+          <col style={{ width: "15%" }} />
+          <col style={{ width: "14%" }} />
+          <col style={{ width: "10%" }} />
+          <col style={{ width: "13%" }} />
+          <col style={{ width: "19%" }} />
+          <col style={{ width: "3%" }} />
+        </colgroup>
+        <thead>
+          <tr>
+            {["Proyecto", "Responsable", "Estado y situación", "% Avance", "Plazo", "Última novedad", ""].map((h, i) => (
+              <th key={i} style={th}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {projects.map((p, idx) => {
+            const est = ESTADO_STYLE[p.estado] || { bg: GRAY_BG, color: A3_GRAY, label: dashIfEmpty(p.estado) };
+            const sit = getSituation(p);
+            const finalizado = p.estado === "FINALIZADO";
+            const focales = p.focal ? String(p.focal).split(",").map((x) => x.trim()) : [];
+            const estrat = stripAccents(String(p.estrategico || "").toLowerCase()) === "si";
+            return (
+              <React.Fragment key={p.id}>
+                {idx === primerFinalizado && idx > 0 && (
+                  <tr>
+                    <td colSpan={7} style={{ padding: "9px 14px", background: "#F4F6F8", fontSize: 11, fontWeight: 700, color: A3_GRAY, letterSpacing: 0.3, textTransform: "uppercase", borderBottom: `1px solid ${BORDER}` }}>
+                      Finalizados
+                    </td>
+                  </tr>
+                )}
+                <tr className="fila-proyecto" onClick={() => onOpen(p.id)} style={{ cursor: "pointer", background: WHITE, opacity: finalizado ? 0.8 : 1 }}>
+                  <td style={td}>
+                    <div style={{ fontWeight: 700, color: A3_NAVY, fontSize: 13, lineHeight: 1.3 }}>
+                      {estrat && <span title="Proyecto estratégico" style={{ color: A3_BLUE, marginRight: 5 }}>★</span>}
                       {p.nombre}
                     </div>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: A3_GRAY,
-                      }}
-                    >
-                      {dashIfEmpty(p.sponsor)}
-                    </div>
+                    <div style={{ fontSize: 11, color: A3_GRAY, marginTop: 3 }}>{dashIfEmpty(p.sponsor)}</div>
                     {p.alertasClickUp.length > 0 && (
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#9A5700", marginTop: 5 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#9A5700", marginTop: 4 }}>
                         ⚠ Revisar ClickUp ({p.alertasClickUp.length})
                       </div>
                     )}
                   </td>
-
-                  <td style={tdStyle}>{dashIfEmpty(p.focal)}</td>
-
-                  <td style={tdStyle}>
-                    <StatusPill bg={est.bg} color={est.color}>
-                      {est.label}
-                    </StatusPill>
+                  <td style={td}>
+                    {focales.length ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ width: 28, height: 28, borderRadius: "50%", background: "#E7F1FF", color: A3_BLUE, display: "inline-grid", placeItems: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                          {iniciales(focales[0])}
+                        </span>
+                        <span style={{ lineHeight: 1.3 }}>
+                          {focales[0]}
+                          {focales.length > 1 && <span style={{ color: A3_GRAY }}> +{focales.length - 1}</span>}
+                        </span>
+                      </div>
+                    ) : (
+                      "—"
+                    )}
                   </td>
-
-                  <td style={tdStyle}>
-                    <StatusPill bg={sit.bg} color={sit.color} dot>
+                  <td style={td}>
+                    <StatusPill bg={est.bg} color={est.color}>{est.label}</StatusPill>
+                    <div style={{ marginTop: 6, fontSize: 11, fontWeight: 600, color: sit.color, display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: sit.color, display: "inline-block" }} />
                       {sit.label}
-                    </StatusPill>
-                    {sit.detail && <div style={{ fontSize: 11, color: sit.color, marginTop: 4 }}>{sit.detail}</div>}
+                    </div>
                   </td>
-
-                  <td style={tdStyle}>
-                    <StatusPill bg={strategic.bg} color={strategic.color}>
-                      {dashIfEmpty(p.estrategico)}
-                    </StatusPill>
+                  <td style={td}><Progress value={p.avance} /></td>
+                  <td style={td}>
+                    {p.nuevaFechaObjetivo ? (
+                      <>
+                        <div style={{ color: A3_GRAY, textDecoration: "line-through", fontSize: 11 }}>{dashIfEmpty(p.fechaObjetivo)}</div>
+                        <div style={{ color: RED, fontWeight: 700 }}>{p.nuevaFechaObjetivo}</div>
+                      </>
+                    ) : (
+                      <div style={{ fontWeight: 600, color: A3_NAVY }}>{dashIfEmpty(p.fechaObjetivo)}</div>
+                    )}
                   </td>
-
-                  <td style={tdStyle}>
-                    <Progress value={p.avance} />
+                  <td style={{ ...td, lineHeight: 1.4 }}>
+                    <div style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                      {dashIfEmpty(p.actualizacion)}
+                    </div>
                   </td>
-
-                  <td style={tdStyle}>{dashIfEmpty(p.fechaObjetivo)}</td>
-
-                  <td
-                    style={{
-                      ...tdStyle,
-                      color: p.nuevaFechaObjetivo ? RED : TEXT,
-                      fontWeight: p.nuevaFechaObjetivo ? 600 : 400,
-                    }}
-                  >
-                    {dashIfEmpty(p.nuevaFechaObjetivo)}
-                  </td>
-
-                  <td style={{ ...tdStyle, lineHeight: 1.45 }}>
-                    {dashIfEmpty(p.actualizacion)}
-                  </td>
-
-                  <td style={{ ...tdStyle, lineHeight: 1.45 }}>
-                    {dashIfEmpty(p.proximoHito)}
-                  </td>
-
-                  <td style={tdStyle}>
-                    <button
-                      onClick={() => onOpen(p.id)}
-                      style={{
-                        border: `1px solid ${A3_BLUE}`,
-                        color: A3_BLUE,
-                        background: WHITE,
-                        borderRadius: 8,
-                        padding: "8px 12px",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        fontFamily: font,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Ver ficha →
-                    </button>
-                  </td>
+                  <td style={{ ...td, color: A3_BLUE, fontSize: 18, textAlign: "center" }}>›</td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              </React.Fragment>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
-
 
 function ProjectCards({ projects, onOpen }) {
   return (
@@ -1147,11 +1107,6 @@ function ProjectCards({ projects, onOpen }) {
               <div className="project-card-wide mobile-detail-only" style={{ gridColumn: "1 / -1" }}>
                 <div style={cardLabelStyle}>Última novedad</div>
                 <div className="mobile-clamp" title={dashIfEmpty(p.actualizacion)} style={cardValueStyle}>{dashIfEmpty(p.actualizacion)}</div>
-              </div>
-
-              <div className="project-card-wide mobile-detail-only" style={{ gridColumn: "1 / -1" }}>
-                <div style={cardLabelStyle}>Próximo hito</div>
-                <div className="mobile-clamp" title={dashIfEmpty(p.proximoHito)} style={cardValueStyle}>{dashIfEmpty(p.proximoHito)}</div>
               </div>
             </div>
           </article>
@@ -1764,16 +1719,26 @@ export default function PortfolioCX() {
   const [error, setError] = useState(null);
   const [loadedAt, setLoadedAt] = useState(null);
   const [filtro, setFiltro] = useState(null); // null | "activos" | "finalizados" | "onhold"
+  const [soloEstrategicos, setSoloEstrategicos] = useState(false);
+  const [refrescando, setRefrescando] = useState(false);
+  const [avisoRefresco, setAvisoRefresco] = useState(null);
+  const recargarRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
-      setLoading(true);
-      setError(null);
+    // silent = true: actualización desde el botón (no tapa la pantalla con "Cargando").
+    async function load(silent) {
+      if (silent) {
+        setRefrescando(true);
+      } else {
+        setLoading(true);
+        setError(null);
+      }
 
       try {
-        const res = await fetch(API_URL, { method: "GET" });
+        // cache: "no-store" pide siempre datos frescos, sin copias guardadas del navegador.
+        const res = await fetch(API_URL, { method: "GET", cache: "no-store" });
 
         if (!res.ok) {
           throw new Error(
@@ -1806,16 +1771,26 @@ export default function PortfolioCX() {
           setProjects(built);
           setLoadedAt(new Date());
           setLoading(false);
+          setError(null);
+          setAvisoRefresco(null);
+          setRefrescando(false);
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err.message || "No se pudo conectar con ClickUp.");
+          if (silent) {
+            // Si falla la actualización, se conservan los datos que ya se veían.
+            setAvisoRefresco("No se pudo actualizar. Se muestran los últimos datos cargados.");
+          } else {
+            setError(err.message || "No se pudo conectar con ClickUp.");
+          }
           setLoading(false);
+          setRefrescando(false);
         }
       }
     }
 
-    load();
+    recargarRef.current = () => load(true);
+    load(false);
 
     return () => {
       cancelled = true;
@@ -1831,12 +1806,20 @@ export default function PortfolioCX() {
 
   const project = projects.find((p) => p.id === view);
 
+  const esEstrategico = (p) => stripAccents(String(p.estrategico || "").toLowerCase()) === "si";
+  const totalEstrategicos = projects.filter(esEstrategico).length;
   const proyectosVisibles = projects.filter((p) => {
+    if (soloEstrategicos && !esEstrategico(p)) return false;
     if (filtro === "finalizados") return p.estado === "FINALIZADO";
     if (filtro === "onhold") return p.estado === "EN PAUSA";
     if (filtro === "activos") return p.estado !== "FINALIZADO" && p.estado !== "EN PAUSA";
     return true;
   });
+  const hayFiltros = !!filtro || soloEstrategicos;
+  const limpiarFiltros = () => {
+    setFiltro(null);
+    setSoloEstrategicos(false);
+  };
   const alternarFiltro = (f) => setFiltro((actual) => (actual === f ? null : f));
   const nombreFiltro = { activos: "Proyectos activos", finalizados: "Proyectos finalizados", onhold: "Proyectos On hold" };
 
@@ -1967,6 +1950,26 @@ export default function PortfolioCX() {
           >
             <div>Última actualización</div>
             <div>{formatDateTime(loadedAt)}</div>
+            <button
+              type="button"
+              onClick={() => recargarRef.current && recargarRef.current()}
+              disabled={refrescando}
+              style={{
+                marginTop: 6,
+                border: "1px solid rgba(255,255,255,.5)",
+                background: "transparent",
+                color: WHITE,
+                borderRadius: 8,
+                padding: "4px 10px",
+                fontSize: 12,
+                fontFamily: font,
+                cursor: refrescando ? "default" : "pointer",
+                opacity: refrescando ? 0.7 : 1,
+              }}
+            >
+              {refrescando ? "Actualizando…" : "↻ Actualizar"}
+            </button>
+            {avisoRefresco && <div style={{ marginTop: 4, color: "#FFD27A" }}>{avisoRefresco}</div>}
           </div>
         </div>
       </header>
@@ -1986,31 +1989,56 @@ export default function PortfolioCX() {
           <KpiCard value={onHold} label="Proyectos On hold" tone="yellow" active={filtro === "onhold"} onClick={() => alternarFiltro("onhold")} />
         </div>
 
-        {filtro && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, fontSize: 13, color: A3_NAVY }}>
-            <span>
-              Mostrando: <b>{nombreFiltro[filtro]}</b> ({proyectosVisibles.length})
-            </span>
-            <button
-              type="button"
-              onClick={() => setFiltro(null)}
-              style={{
-                border: `1px solid ${BORDER}`,
-                background: WHITE,
-                color: A3_NAVY,
-                borderRadius: 8,
-                padding: "5px 10px",
-                fontSize: 12,
-                cursor: "pointer",
-              }}
-            >
-              Quitar filtro ✕
-            </button>
-          </div>
-        )}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 12, fontSize: 13, color: A3_NAVY }}>
+          <button
+            type="button"
+            aria-pressed={soloEstrategicos}
+            onClick={() => setSoloEstrategicos((v) => !v)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              border: `1px solid ${soloEstrategicos ? A3_BLUE : BORDER}`,
+              background: soloEstrategicos ? "#E7F1FF" : WHITE,
+              color: soloEstrategicos ? "#0057B8" : A3_NAVY,
+              borderRadius: 999,
+              padding: "8px 14px",
+              fontSize: 12,
+              fontWeight: 700,
+              fontFamily: font,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ color: A3_BLUE }}>★</span> Solo estratégicos ({totalEstrategicos})
+          </button>
 
-        <PortfolioTable projects={proyectosVisibles} onOpen={setView} />
-        <ProjectCards projects={proyectosVisibles} onOpen={setView} />
+          {hayFiltros && (
+            <>
+              <span>
+                Mostrando <b>{proyectosVisibles.length}</b> de {projects.length} proyectos
+                {filtro ? <> · <b>{nombreFiltro[filtro]}</b></> : null}
+              </span>
+              <button
+                type="button"
+                onClick={limpiarFiltros}
+                style={{ border: `1px solid ${BORDER}`, background: WHITE, color: A3_NAVY, borderRadius: 8, padding: "5px 10px", fontSize: 12, fontFamily: font, cursor: "pointer" }}
+              >
+                Quitar filtros ✕
+              </button>
+            </>
+          )}
+        </div>
+
+        {proyectosVisibles.length === 0 ? (
+          <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "34px 20px", textAlign: "center", color: A3_GRAY, fontSize: 14 }}>
+            No hay proyectos que coincidan con los filtros.
+          </div>
+        ) : (
+          <>
+            <PortfolioTable projects={proyectosVisibles} onOpen={setView} />
+            <ProjectCards projects={proyectosVisibles} onOpen={setView} />
+          </>
+        )}
 
         <div
           className="portfolio-footer"
@@ -2023,7 +2051,7 @@ export default function PortfolioCX() {
             color: A3_NAVY,
           }}
         >
-          <div>{filtro ? `${proyectosVisibles.length} de ${projects.length} proyectos` : `${projects.length} proyectos en total`}</div>
+          <div>{hayFiltros ? `${proyectosVisibles.length} de ${projects.length} proyectos` : `${projects.length} proyectos en total`}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span>Mostrar</span>
             <span

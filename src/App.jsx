@@ -519,6 +519,7 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
 
   const entregables = entregablesRaw
     .filter((e) => e.parent === task.id)
+    .reverse() // el proxy los entrega en orden inverso al de ClickUp
     .map((e) => buildEntregable(e, allTasks));
 
   const estado = estadoDesdeHijos(entregables, estadoClickUp);
@@ -574,6 +575,7 @@ function buildEntregable(task, allTasks) {
 
   const actividades = allTasks
     .filter((a) => a.parent === task.id)
+    .reverse() // el proxy los entrega en orden inverso al de ClickUp
     .map((a) => ({
       id: a.id,
       nombre: a.name,

@@ -1806,10 +1806,12 @@ export default function PortfolioCX() {
     };
   }, []);
 
-  const activos = projects.filter((p) => p.estado !== "FINALIZADO").length;
-  const enFecha = projects.filter((p) => getSituation(p).label === "En fecha").length;
-  const enAtencion = projects.filter((p) => getSituation(p).label === "En atención").length;
-  const criticos = projects.filter((p) => getSituation(p).label === "Crítico").length;
+  // Los tres grupos no se superponen: cada proyecto cuenta en uno solo.
+  const finalizados = projects.filter((p) => p.estado === "FINALIZADO").length;
+  const onHold = projects.filter((p) => p.estado === "EN PAUSA").length;
+  const activos = projects.filter(
+    (p) => p.estado !== "FINALIZADO" && p.estado !== "EN PAUSA"
+  ).length;
 
   const project = projects.find((p) => p.id === view);
 
@@ -1949,15 +1951,14 @@ export default function PortfolioCX() {
           className="kpi-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
             gap: 14,
             marginBottom: 16,
           }}
         >
           <KpiCard value={activos} label="Proyectos activos" tone="blue" icon="▣" />
-          <KpiCard value={enFecha} label="En fecha" tone="green" />
-          <KpiCard value={enAtencion} label="En atención" tone="yellow" />
-          <KpiCard value={criticos} label="Crítico" tone="red" />
+          <KpiCard value={finalizados} label="Proyectos finalizados" tone="green" />
+          <KpiCard value={onHold} label="Proyectos On hold" tone="yellow" />
         </div>
 
         <PortfolioTable projects={projects} onOpen={setView} />

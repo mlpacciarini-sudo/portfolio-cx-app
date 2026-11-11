@@ -519,7 +519,6 @@ function buildProjectFromTask(task, entregablesRaw, allTasks) {
 
   const entregables = entregablesRaw
     .filter((e) => e.parent === task.id)
-    .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }))
     .map((e) => buildEntregable(e, allTasks));
 
   const estado = estadoDesdeHijos(entregables, estadoClickUp);
@@ -575,7 +574,6 @@ function buildEntregable(task, allTasks) {
 
   const actividades = allTasks
     .filter((a) => a.parent === task.id)
-    .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true }))
     .map((a) => ({
       id: a.id,
       nombre: a.name,

@@ -710,7 +710,7 @@ function StatusPill({ bg, color, children, dot = false }) {
   );
 }
 
-function KpiCard({ value, label, tone = "blue", icon }) {
+function KpiCard({ value, label, tone = "blue", icon, onClick, active }) {
   const map = {
     blue: { fg: A3_BLUE, bg: "#E7F1FF" },
     green: { fg: GREEN, bg: "#DFF6ED" },
@@ -723,9 +723,24 @@ function KpiCard({ value, label, tone = "blue", icon }) {
   return (
     <div
       className="kpi-card"
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-pressed={onClick ? !!active : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       style={{
-        background: WHITE,
-        border: `1px solid ${BORDER}`,
+        cursor: onClick ? "pointer" : "default",
+        background: active ? c.bg : WHITE,
+        border: `1px solid ${active ? c.fg : BORDER}`,
         borderRadius: 10,
         padding: "13px 16px",
         boxShadow: "0 4px 12px rgba(0,0,0,0.035)",
@@ -1748,6 +1763,7 @@ export default function PortfolioCX() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loadedAt, setLoadedAt] = useState(null);
+  const [filtro, setFiltro] = useState(null); // null | "activos" | "finalizados" | "onhold"
 
   useEffect(() => {
     let cancelled = false;
@@ -1814,6 +1830,15 @@ export default function PortfolioCX() {
   ).length;
 
   const project = projects.find((p) => p.id === view);
+
+  const proyectosVisibles = projects.filter((p) => {
+    if (filtro === "finalizados") return p.estado === "FINALIZADO";
+    if (filtro === "onhold") return p.estado === "EN PAUSA";
+    if (filtro === "activos") return p.estado !== "FINALIZADO" && p.estado !== "EN PAUSA";
+    return true;
+  });
+  const alternarFiltro = (f) => setFiltro((actual) => (actual === f ? null : f));
+  const nombreFiltro = { activos: "Proyectos activos", finalizados: "Proyectos finalizados", onhold: "Proyectos On hold" };
 
   if (loading) {
     return (
@@ -1956,13 +1981,36 @@ export default function PortfolioCX() {
             marginBottom: 16,
           }}
         >
-          <KpiCard value={activos} label="Proyectos activos" tone="blue" icon="▣" />
-          <KpiCard value={finalizados} label="Proyectos finalizados" tone="green" />
-          <KpiCard value={onHold} label="Proyectos On hold" tone="yellow" />
+          <KpiCard value={activos} label="Proyectos activos" tone="blue" icon="▣" active={filtro === "activos"} onClick={() => alternarFiltro("activos")} />
+          <KpiCard value={finalizados} label="Proyectos finalizados" tone="green" active={filtro === "finalizados"} onClick={() => alternarFiltro("finalizados")} />
+          <KpiCard value={onHold} label="Proyectos On hold" tone="yellow" active={filtro === "onhold"} onClick={() => alternarFiltro("onhold")} />
         </div>
 
-        <PortfolioTable projects={projects} onOpen={setView} />
-        <ProjectCards projects={projects} onOpen={setView} />
+        {filtro && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, fontSize: 13, color: A3_NAVY }}>
+            <span>
+              Mostrando: <b>{nombreFiltro[filtro]}</b> ({proyectosVisibles.length})
+            </span>
+            <button
+              type="button"
+              onClick={() => setFiltro(null)}
+              style={{
+                border: `1px solid ${BORDER}`,
+                background: WHITE,
+                color: A3_NAVY,
+                borderRadius: 8,
+                padding: "5px 10px",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              Quitar filtro ✕
+            </button>
+          </div>
+        )}
+
+        <PortfolioTable projects={proyectosVisibles} onOpen={setView} />
+        <ProjectCards projects={proyectosVisibles} onOpen={setView} />
 
         <div
           className="portfolio-footer"
@@ -1975,7 +2023,7 @@ export default function PortfolioCX() {
             color: A3_NAVY,
           }}
         >
-          <div>{projects.length} proyectos en total</div>
+          <div>{filtro ? `${proyectosVisibles.length} de ${projects.length} proyectos` : `${projects.length} proyectos en total`}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span>Mostrar</span>
             <span

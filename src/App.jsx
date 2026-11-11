@@ -1774,11 +1774,17 @@ export default function PortfolioCX() {
 
         const topLevel = tasks.filter((t) => !t.parent);
 
+        // Se ordena después de construir cada proyecto, porque su estado final
+        // se deduce de sus entregables. Los finalizados van al final; dentro de
+        // cada grupo se mantiene el orden alfabético por nombre.
         const built = topLevel
-          .sort((a, b) =>
-            a.name.localeCompare(b.name, "es", { numeric: true })
-          )
-          .map((t) => buildProjectFromTask(t, tasks, tasks));
+          .map((t) => buildProjectFromTask(t, tasks, tasks))
+          .sort((a, b) => {
+            const aFin = a.estado === "FINALIZADO" ? 1 : 0;
+            const bFin = b.estado === "FINALIZADO" ? 1 : 0;
+            if (aFin !== bFin) return aFin - bFin;
+            return a.nombre.localeCompare(b.nombre, "es", { numeric: true });
+          });
 
         if (!cancelled) {
           setProjects(built);
